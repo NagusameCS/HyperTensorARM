@@ -212,7 +212,9 @@ def stream_compress_gguf(
             print(f"[stream] {i + 1}/{n_tensors} tensors "
                   f"({n_factored} factored, {n_copied} copied, {time.time() - t0:.0f}s)")
 
-    writer.write_tensors_to_file()
+    # All tensor data was written via write_tensor_data (which handles
+    # per-tensor alignment padding). No final write_tensors_to_file needed;
+    # it would re-enter write_ti_data_to_file and fail in WEIGHTS state.
     writer.close()
 
     stats = {

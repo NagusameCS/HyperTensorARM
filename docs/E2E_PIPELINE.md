@@ -78,9 +78,10 @@ Decode throughput (geodessical, 0.5B compressed model):
 | Q8_0 (re-quantized) | 108.7 | 10.98 |
 | Q4_K_M (re-quantized) | 109.2 | 11.24 |
 
-1.5B: int4-only PPL 6.94 (llama 6.73). Plain truncated SVD at rank 1024 is too
-aggressive for its 8960-dim FFN (PPL ~3.5K); the civilized GRC method
-(sink-aware) is required there.
+1.5B: int4-only PPL 6.94 (llama 6.73). ffn_rank=2048 + int4 streaming gives
+PPL 7.73 (llama 7.35), 2729 MB, 15.9 tok/s decode. Plain truncated SVD at rank
+1024 is too aggressive for the 8960-dim FFN (PPL ~3.5K); the civilized GRC
+method (sink-aware) is required at lower ranks.
 
 ## Reproducing
 

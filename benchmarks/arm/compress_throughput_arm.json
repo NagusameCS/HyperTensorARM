@@ -106,7 +106,8 @@
       "config": "ffn_rank=1024 + int4 (streaming export, non-FFN byte-copied)",
       "ppl_ours": 11.66,
       "ppl_llama": 11.09,
-      "size_mb": 861
+      "size_mb": 861,
+      "decode_tok_s": 46.4
     },
     {
       "config": "ffn_rank=256 + int4",
@@ -125,7 +126,13 @@
       "config": "ffn_rank=1024 + int4",
       "ppl_ours": 3569.5,
       "ppl_llama": 3300.2,
-      "note": "plain truncated SVD at rank 1024 is too aggressive for 8960-dim FFN (civilized GRC uses sink/attention-aware method); rank 2048 streaming run in progress"
+      "note": "plain truncated SVD at rank 1024 too aggressive for 8960-dim FFN"
+    },
+    {
+      "config": "ffn_rank=2048 + int4 (streaming, non-FFN byte-copied)",
+      "ppl_ours": 7.73,
+      "ppl_llama": 7.35,
+      "size_mb": 2729
     }
   ]
 }
