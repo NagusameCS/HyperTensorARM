@@ -109,8 +109,9 @@ print("\n[0] Loading Qwen2.5-1.5B-Instruct for real hidden states...")
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 model = AutoModelForCausalLM.from_pretrained(
-    "Qwen/Qwen2.5-1.5B-Instruct", torch_dtype=torch.float16,
-    device_map="auto", trust_remote_code=True
+    "Qwen/Qwen2.5-1.5B-Instruct", torch_dtype=torch.float32,
+    device_map=None, trust_remote_code=True,
+    low_cpu_mem_usage=False
 )
 tok = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-1.5B-Instruct", trust_remote_code=True)
 tok.pad_token = tok.eos_token
@@ -126,16 +127,17 @@ else:
 def get_hidden(texts, batch_size=16):
     """Batched hidden state extraction from REAL model."""
     model.eval()
+    dev = next(model.parameters()).device
     all_h = []
     with torch.inference_mode():
         for i in range(0, len(texts), batch_size):
             batch = texts[i:i+batch_size]
             enc = tok(batch, return_tensors="pt", padding=True, truncation=True, max_length=64)
-            enc = {k: v.to(DEVICE) for k, v in enc.items()}
+            enc = {k: v.to(dev) for k, v in enc.items()}
             out = model(**enc, output_hidden_states=True)
             seq_lens = enc["attention_mask"].sum(dim=1) - 1
             hs = out.hidden_states[MID_LAYER]
-            h = hs[torch.arange(len(batch), device=DEVICE), seq_lens].cpu().float()
+            h = hs[torch.arange(len(batch), device=dev), seq_lens].cpu().float()
             all_h.append(h)
     return torch.cat(all_h)
 
@@ -203,7 +205,9 @@ cal_prompts = [
 
 # Model A: original weights
 hs_a = get_hidden(cal_prompts)
-Ua, Sa = smart_svd((hs_a - hs_a.mean(dim=0)).T.to(DEVICE), min(64, len(cal_prompts)))
+# SVD on CPU: torch.svd on MPS hits a pathological copy-cast path for these
+# shapes on macOS — keep small linalg on the CPU.
+Ua, Sa = smart_svd((hs_a - hs_a.mean(dim=0)).T.to("cpu"), min(64, len(cal_prompts)))
 basis_a = Ua[:, :min(64, len(cal_prompts))]
 
 # Model B: perturb weights
@@ -214,7 +218,7 @@ with torch.no_grad():
             param.add_(torch.randn_like(param) * 0.0005)
 
 hs_b = get_hidden(cal_prompts)
-Ub, Sb = smart_svd((hs_b - hs_b.mean(dim=0)).T.to(DEVICE), min(64, len(cal_prompts)))
+Ub, Sb = smart_svd((hs_b - hs_b.mean(dim=0)).T.to("cpu"), min(64, len(cal_prompts)))
 basis_b = Ub[:, :min(64, len(cal_prompts))]
 
 k_ugt = basis_a.shape[1]
@@ -232,8 +236,9 @@ from hyper_optimize import batch_cosine_search
 for N in [1000000]:  # Conclusive at N=1M where O(N) >> O(S)
     K = 64; S = 20; B = 100
     try:
-        pool = F.normalize(torch.randn(N, K, device=DEVICE), dim=1)
-        queries = F.normalize(torch.randn(B, K, device=DEVICE), dim=1)
+        jdev = "cpu" if DEVICE != "cuda" else "cuda"
+        pool = F.normalize(torch.randn(N, K, device=jdev), dim=1)
+        queries = F.normalize(torch.randn(B, K, device=jdev), dim=1)
         
         _sync_device()
         t0 = time.perf_counter()
@@ -331,10 +336,11 @@ _ = get_hidden(prompts_20)  # batched
 t_batch = time.perf_counter() - t0
 
 # One-at-a-time (simulate original behavior)
+_model_dev = next(model.parameters()).device
 t0 = time.perf_counter()
 for p in prompts_20[:5]:
     enc = tok(p, return_tensors="pt", truncation=True, max_length=64)
-    enc = {k: v.to(DEVICE) for k, v in enc.items()}
+    enc = {k: v.to(_model_dev) for k, v in enc.items()}
     with torch.inference_mode():
         _ = model(**enc, output_hidden_states=True)
 t_serial = (time.perf_counter() - t0) * (20/5)  # scale to 20

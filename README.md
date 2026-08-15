@@ -11,7 +11,7 @@ matrix.
 | Layer | Status |
 |---|---|
 | C runtime `geodessical` (GGUF inference, NEON backend, arm64 JIT, Accelerate) | ✅ Builds & runs — numerics match llama.cpp oracle |
-| Apple ARM NEON dotprod (SDOT) GEMV kernels (Q5_0/Q8_0/Q4_K/Q6_K, SMP split) | ✅ **4.9 → 48.1 tok/s decode** (~10×), parity kept |
+| Apple ARM NEON dotprod (SDOT) GEMV kernels (Q5_0/Q8_0/Q4_K/Q6_K, SMP split) | ✅ **4.9 → 88.5 tok/s decode** (~18×), parity kept |
 | C tests (kernels, model_meta, chat, tokenizer) | ✅ All pass |
 | Python suites (pytest: 108/108, audit 33/33, external verification 28/28) | ✅ Pass |
 | ht-repro REST + SQLite | ✅ Pass |
@@ -19,8 +19,9 @@ matrix.
 | Jury scaling | ✅ 547× @128 jurors (claim: 53×) |
 | HyperRetro fused dual-Q8 GEMV (NEON SDOT) | ✅ 8.87× vs two Q8 GEMVs (claim: 2.3×) |
 | CECI grafting (ht-graft) | ✅ 5 grafts built, "GRAFTING WORKS" |
-| Unified memory: Qwen2.5-1.5B Q4_K_M (1.07 GB) | ✅ 26.5 tok/s decode, PPL 16.68, oracle parity |
-| i8mm (SMMLA) int8 matrix ops in hyperretro kernel | ✅ 2× MAC rate over SDOT on M-series |
+| External verification on real 1.5B model (claim: 14/14) | ✅ **14/14 PASS** (UGT overlap 0.970 vs 0.968 claim) |
+| Unified memory: Qwen2.5-1.5B Q4_K_M (1.07 GB) | ✅ 32.8 tok/s decode, PPL 16.68, oracle parity |
+| i8mm (SMMLA) + GCD parallel hyperretro kernel | ✅ 12.78× vs two Q8 GEMVs (claim 2.3×) |
 
 ## Build the C runtime
 
