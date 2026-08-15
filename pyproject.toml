@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hypertensor"
 version = "1.1.0"
-description = "Riemannian geometry for transformer compression, speculative decoding, safety, and the Riemann Hypothesis"
+description = "Riemannian geometry for transformer compression, speculative decoding, safety, and the Riemann Hypothesis — with a production ARM inference tool (hyperarm)"
 authors = [{name = "William 'Nagusame' Ken Ohara Stewart"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["numpy>=1.24", "gguf>=0.17"]
+dependencies = ["numpy>=1.24,<2", "gguf>=0.17"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
@@ -27,6 +27,7 @@ hyperarm = "hyperretro.models.e2e_cli:main"
 
 [project.optional-dependencies]
 torch = ["torch>=2.0"]
+compress = ["torch>=2.0"]
 full = ["torch>=2.0", "transformers>=4.40", "safetensors>=0.4", "bitsandbytes>=0.43"]
 repro = ["numpy>=1.24", "scipy>=1.11", "mpmath>=1.3", "sympy>=1.12"]
 om = ["open-mythos"]
@@ -40,3 +41,6 @@ Website = "https://nagusamecs.github.io/HyperTensor"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["hypercore*", "hyperretro*", "hyperretro.hf*", "hyperretro.models*"]
+
+[tool.setuptools.package-data]
+hyperretro = ["bin/geodessical"]

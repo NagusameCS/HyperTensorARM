@@ -9,13 +9,13 @@ RANK   ?= 1024
 ATTN   ?= 0
 SINK   ?= 0
 
-.PHONY: help build test pytest all infer ppl compress stream verify quantize clean
+.PHONY: help build test pytest all infer ppl compress stream verify quantize clean package
 
 help:
 	@echo "Targets:"
 	@echo "  build     - build C runtime + libht_arm.a (./build_host_arm.sh)"
 	@echo "  test      - C test suite (39/39)"
-	@echo "  pytest    - Python test suite (109/109)"
+	@echo "  pytest    - Python test suite (114/114)"
 	@echo "  all       - build + test + pytest"
 	@echo "  infer     - geodessical generation on MODEL"
 	@echo "  ppl       - geodessical --ppl-eval on MODEL"
@@ -23,6 +23,7 @@ help:
 	@echo "  stream    - streaming compress (IN -> OUT, --ffn-rank RANK --int4)"
 	@echo "  verify    - verify OUT with geodessical --ppl-eval"
 	@echo "  quantize  - llama-quantize OUT to OUT.q4km.gguf (Q4_K_M)"
+	@echo "  package   - ship runtime in package + pip install (hyperarm CLI)"
 	@echo "  clean     - remove build directories"
 	@echo ""
 	@echo "Variables: PY, MODEL, IN, OUT, RANK, ATTN, SINK"
@@ -55,6 +56,9 @@ verify:
 
 quantize:
 	third_party/llama.cpp/build/bin/llama-quantize $(OUT) $(OUT).q4km.gguf Q4_K_M 8
+
+package:
+	./scripts/package.sh --venv $(PY)
 
 clean:
 	rm -rf build_host_arm build_asan build_tests_arm

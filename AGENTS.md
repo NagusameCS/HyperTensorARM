@@ -38,6 +38,12 @@ Reference clones `civilized-HyperTensor/`, `HyperTensor-original/` and
 .venv311/bin/python scripts/e2e.py stream   in.gguf out.gguf --ffn-rank 0 --attn-rank 1024 --sink 4 --int4  # GRC attention
 .venv311/bin/python scripts/e2e.py verify   out.gguf
 .venv311/bin/python scripts/e2e.py quantize out.gguf out-q4km.gguf Q4_K_M
+
+# Packaging (prod install of the hyperarm CLI with the runtime shipped in-wheel)
+./scripts/package.sh --venv .venv311/bin/python   # build C + ship binary + pip install .
+make package
+hyperarm doctor        # env status; verify/infer/ppl work with only numpy+gguf
+hyperarm install-runtime --repo .   # build + copy geodessical to ~/.hyperarm
 ```
 
 ## Repo map
@@ -49,7 +55,8 @@ Reference clones `civilized-HyperTensor/`, `HyperTensor-original/` and
 | `runtime/nn/gguf.c` | GGUF parser |
 | `host/main.c` | `geodessical` CLI (`--ppl-eval`, generation) |
 | `host/hal.c` | SMP (8 CPUs), memory, timers |
-| `hyperretro/models/` | Python model API: `load_model`, `compress_model`, `export_model`, `stream_compress_gguf`, `e2e_cli` (the `hyperarm` command) |
+| `hyperretro/models/` | Python model API: `load_model`, `compress_model`, `export_model`, `stream_compress_gguf`, `e2e_cli` (the `hyperarm` command), `runtime.py` (geodessical discovery) |
+| `hyperretro/bin/geodessical` | compiled ARM runtime shipped in the wheel — re-copy after C changes |
 | `hyperretro/hf/` | SVD factoring (`factored.py`), int4 quant (`factor_int4.py`, `factor_quantize.py`) |
 | `ht_repro/` | REST + SQLite service |
 | `scripts/` | Experiments, verification harnesses, `e2e.py` shim |

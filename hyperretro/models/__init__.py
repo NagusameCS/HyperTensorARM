@@ -418,7 +418,11 @@ def stream_compress_gguf(
 # ---------------------------------------------------------------------------
 
 def _register_hf():
-    """Register the HuggingFace backend (always available)."""
+    """Register the HuggingFace backend (requires torch + transformers).
+
+    Registered lazily on the first huggingface load_model call so the
+    `hyperarm` CLI (verify / infer / ppl / doctor) works without torch.
+    """
     from hyperretro.models.hf import HuggingFaceAdapter, _load_hf_model
     register_backend("huggingface", HuggingFaceAdapter, _load_hf_model)
 
@@ -457,8 +461,8 @@ def _register_vllm():
         ) from e
 
 
-# Auto-register HF on import
-_register_hf()
+# Backends are registered lazily in load_model(); no eager imports here so
+# the CLI works with only numpy + gguf installed.
 
 
 # ---------------------------------------------------------------------------

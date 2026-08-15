@@ -9,7 +9,36 @@ matrix.
 > **For AI coding agents**: read [`AGENTS.md`](AGENTS.md) first — it has the
 > repo map, the commands that must keep working, the oracle-verification
 > protocol, and the pitfalls. A `Makefile` exposes `build`, `test`, `pytest`,
-> `infer`, `ppl`, `compress`, `stream`, `verify`, `quantize`.
+> `infer`, `ppl`, `compress`, `stream`, `verify`, `quantize`, `package`.
+
+## Install as a production tool (`hyperarm`)
+
+`pip install .` ships the compiled ARM runtime (`geodessical`) inside the
+package and installs the `hyperarm` CLI. The tool then works from any
+directory — no checkout needed.
+
+```bash
+# From this repository (macOS arm64):
+python3.11 -m venv .venv
+.venv/bin/pip install .            # base install: runtime + verify/infer/ppl
+.venv/bin/pip install '.[compress]'  # add torch for compress/stream
+
+# One-shot build + ship + install (also `make package`):
+./scripts/package.sh --venv .venv/bin/python
+
+hyperarm doctor                    # environment status
+hyperarm verify model.gguf         # WikiText PPL on the ARM runtime
+hyperarm ppl model.gguf            # alias of verify
+hyperarm infer model.gguf -p "Hello" -n 32   # generate text
+hyperarm compress in.gguf out.gguf --ffn-rank 1024 --int4
+hyperarm stream in.gguf out.gguf --ffn-rank 0 --attn-rank 1024 --sink 4 --int4
+hyperarm quantize out.gguf out-q4km.gguf Q4_K_M
+```
+
+Runtime discovery order: `$HYPERARM_RUNTIME`, `~/.hyperarm/bin/geodessical`
+(`hyperarm install-runtime`), the binary shipped in the wheel, the repo
+build directory, then `$PATH`. `hyperarm install-runtime --repo PATH`
+builds from a source checkout and installs to `~/.hyperarm`.
 
 ## What runs on ARM today
 
@@ -18,7 +47,7 @@ matrix.
 | C runtime `geodessical` (GGUF inference, NEON backend, arm64 JIT, Accelerate) | OK Builds & runs — numerics match llama.cpp oracle |
 | Apple ARM NEON dotprod (SDOT) GEMV kernels (Q5_0/Q8_0/Q4_K/Q6_K, SMP split) | OK **4.9 → 88.5 tok/s decode** (~18×), parity kept |
 | C tests (kernels, model_meta, chat, tokenizer) | OK All pass |
-| Python suites (pytest: 108/108, audit 33/33, external verification 28/28) | OK Pass |
+| Python suites (pytest: 117/117, audit 33/33, external verification 28/28) | OK Pass |
 | ht-repro REST + SQLite | OK Pass — `/health`, `/gpu`, `/sort`, `/jobs`, and real `/infer` (gpt2 generation on ARM) |
 | AGT 50K primes (Riemann) | OK 100%, k90=k95=1, 676× separation |
 | Jury scaling | OK 547× @128 jurors (claim: 53×) |

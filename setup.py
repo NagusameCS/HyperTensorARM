@@ -147,6 +147,9 @@ setup(
     },
     ext_modules=_ext_modules,
     cmdclass=_cmdclass,
+    package_data={
+        "hyperretro": ["bin/geodessical"],
+    },
     entry_points={
         "console_scripts": [
             "hyperretro=hyperretro.cli:main",
@@ -156,11 +159,12 @@ setup(
         ],
     },
     install_requires=[
-        "numpy>=1.24",
+        "numpy>=1.24,<2",
         "gguf>=0.17",
     ],
     extras_require={
         "torch": ["torch>=2.0"],
+        "compress": ["torch>=2.0"],
         "full": [
             "torch>=2.0",
             "transformers>=4.40",
