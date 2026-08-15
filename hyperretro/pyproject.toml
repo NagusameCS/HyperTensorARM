@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hyperretro"
+version = "0.3.6"
+description = "Geometric LLM compression: factor+int4 with verifiable quality certificates"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "William Ken Ohara Stewart (NagusameCS)", email = "nagusamecs@gmail.com" }]
+keywords = [
+    "llm",
+    "compression",
+    "quantization",
+    "speculative-decoding",
+    "pytorch",
+    "huggingface",
+    "vllm",
+    "gguf",
+    "safetensors",
+    "low-rank",
+    "svd",
+    "grc",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "numpy>=1.24",
+    "safetensors>=0.4",
+]
+
+[project.urls]
+Repository = "https://github.com/NagusameCS/HyperTensor"
+Documentation = "https://github.com/NagusameCS/HyperTensor/tree/main/hyperretro"
+Issues = "https://github.com/NagusameCS/HyperTensor/issues"
+Changelog = "https://github.com/NagusameCS/HyperTensor/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+hf = ["transformers>=4.40", "torch>=2.1", "huggingface_hub>=0.20"]
+vllm = ["vllm>=0.5"]
+gguf = ["gguf>=0.9"]
+bench = ["torch>=2.1", "transformers>=4.40", "datasets>=2.18", "tqdm"]
+dev = ["pytest>=7", "pytest-cov"]
+
+[project.scripts]
+hyperretro = "hyperretro.cli:main"
+hyperretro-compress = "hyperretro.hf.compress:_cli_main"
+hyperretro-distill = "hyperretro.hf.distill:_cli_main"
+hyperretro-bench = "hyperretro.bench.run:_cli_main"
+hyperretro-vllm = "hyperretro.vllm_adapter:_cli_main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hyperretro*"]

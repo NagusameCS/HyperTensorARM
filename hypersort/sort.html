@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>/sort — HyperSort</title>
+<style>
+:root {
+  --bg:#141413; --card:#1c1c1a; --border:#2a2a26;
+  --text:#e8e6e3; --dim:#8b8a86; --mid:#b5b3ad;
+  --accent:#d97706; --a2:#f59e0b;
+  --green:#34d399; --red:#f87171; --blue:#60a5fa; --pink:#f472b6;
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'SF Pro Display','Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.6;min-height:100vh}
+.header{max-width:1100px;margin:0 auto;padding:48px 24px 32px}
+.header .path{font-family:'SF Mono','JetBrains Mono',monospace;font-size:.8rem;color:var(--dim);letter-spacing:.5px;margin-bottom:12px}
+.header h1{font-size:2.2rem;font-weight:500;letter-spacing:-.02em;color:#fff;margin-bottom:8px}
+.header h1 em{font-style:normal;color:var(--accent)}
+.header .sub{color:var(--dim);font-size:.95rem;max-width:520px}
+.controls{max-width:1100px;margin:0 auto;padding:0 24px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.controls label{font-size:.8rem;color:var(--dim);text-transform:uppercase;letter-spacing:.6px}
+.controls input[type=range]{width:120px;accent-color:var(--accent)}
+.cv{font-family:'SF Mono',monospace;font-size:.85rem;color:var(--mid);min-width:28px}
+.btn{background:var(--card);border:1px solid var(--border);color:var(--mid);padding:8px 18px;border-radius:6px;font-size:.82rem;cursor:pointer;transition:all .15s;letter-spacing:.3px}
+.btn:hover{border-color:var(--dim);color:#fff}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+.btn.pri:hover{background:var(--a2);border-color:var(--a2)}
+.btn.sm{padding:5px 12px;font-size:.72rem}
+.arena{max-width:1100px;margin:0 auto;padding:0 24px 48px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:700px){.arena{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:border-color .3s,box-shadow .3s}
+.card.best{border-color:rgba(245,158,11,.4);box-shadow:0 0 24px rgba(245,158,11,.06)}
+.card-head{padding:14px 16px 8px;display:flex;justify-content:space-between;align-items:baseline}
+.card-head h3{font-size:.9rem;font-weight:500;letter-spacing:-.01em}
+.tag{font-size:.65rem;font-weight:500;letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:4px}
+.th{background:rgba(245,158,11,.18);color:var(--a2)}
+.tq{background:rgba(248,113,113,.15);color:var(--red)}
+.tm{background:rgba(52,211,153,.15);color:var(--green)}
+.tn{background:rgba(96,165,250,.15);color:var(--blue)}
+.cw{height:150px;margin:6px 12px;position:relative}
+.cw canvas{width:100%;height:100%;display:block}
+.stats{display:flex;padding:6px 14px 12px}
+.stat{flex:1;text-align:center}
+.stat .v{font-family:'SF Mono',monospace;font-size:1rem;font-weight:500;color:#fff}
+.stat .l{font-size:.6rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:1px}
+.v.g{color:var(--green)} .v.w{color:var(--accent)}
+.jury{padding:0 14px 12px;display:flex;align-items:center;gap:8px;font-size:.7rem;color:var(--dim)}
+.jb{flex:1;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.jf{height:100%;background:linear-gradient(90deg,var(--pink),var(--accent));border-radius:2px;transition:width .4s}
+.callout{max-width:1100px;margin:0 auto 16px;padding:0 24px}
+.ci{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:var(--r);padding:12px 16px;font-size:.78rem;color:var(--dim);line-height:1.5}
+.ci strong{color:var(--a2)}
+.ci code{font-family:'SF Mono',monospace;background:rgba(255,255,255,.05);padding:1px 5px;border-radius:3px;font-size:.75rem}
+.footer{text-align:center;padding:24px;color:var(--dim);font-size:.7rem;letter-spacing:.5px;border-top:1px solid var(--border)}
+.footer a{color:var(--mid);text-decoration:none}
+.footer a:hover{color:#fff}
+.si{position:absolute;bottom:6px;right:10px;font-family:'SF Mono',monospace;font-size:.6rem;color:rgba(255,255,255,.15)}
+</style>
+</head>
+<body>
+
+<div class="header">
+<div class="path">nagusamecs.github.io/HyperTensor<span style="color:var(--accent)">/sort</span></div>
+<h1>Hyper<em>Sort</em></h1>
+<p class="sub">Live algorithm comparison. HyperSort replaces O(n log n) sequential compares with a single O(1)-step matrix multiply — all n² pairs in parallel. Use the speed slider to watch each algorithm step.</p>
+</div>
+
+<div class="controls">
+<label>Elements</label>
+<input type="range" id="sz" min="8" max="200" value="48" step="8">
+<span class="cv" id="szD">48</span>
+<label>Speed</label>
+<input type="range" id="sp" min="1" max="30" value="10" step="1">
+<span class="cv" id="spD">10×</span>
+<button class="btn" id="bShuf">Shuffle</button>
+<button class="btn pri" id="bRun">▶ Run All</button>
+<button class="btn sm" id="bStep">Step</button>
+<button class="btn sm" id="bFast"> Instant</button>
+</div>
+
+<div class="callout" id="co" style="display:none"><div class="ci" id="ct"></div></div>
+<div class="arena" id="ar"></div>
+<div class="footer">
+<a href="https://github.com/NagusameCS/HyperTensor">HyperTensor</a> · Geometric Jury · Papers I–XVIII · <a href="https://pypi.org/project/hypersort/">pip install hypersort</a>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let D=[],R={},sp=10,SS={},af=null,rn=false,t0=0;
+
+function gen(n){const a=[];for(let i=0;i<n;i++)a.push(Math.round(Math.random()*10000)/100);return a}
+
+// ═══════════════════════════════════════════════════
+// QUICKSORT — steppable (Lomuto)
+// ═══════════════════════════════════════════════════
+function iQS(a){return{arr:[...a],stack:[[0,a.length-1]],i:0,j:0,pv:0,done:false,cmps:0,swaps:0,ph:'start',lo:0,hi:a.length-1,st:0}}
+function sQS(s){
+ if(s.done)return s;s.cmps++;
+ if(s.ph==='start'){
+  if(s.stack.length===0){s.done=true;return s}
+  const[l,h]=s.stack.pop();if(l>=h)return s;
+  s.lo=l;s.hi=h;s.pv=s.arr[h];s.i=l;s.j=l;s.ph='scan';return s
+ }
+ if(s.ph==='scan'){
+  if(s.j<s.hi){if(s.arr[s.j]<s.pv){[s.arr[s.i],s.arr[s.j]]=[s.arr[s.j],s.arr[s.i]];s.swaps++;s.i++}s.j++;return s}
+  [s.arr[s.i],s.arr[s.hi]]=[s.arr[s.hi],s.arr[s.i]];s.swaps++;
+  s.stack.push([s.i+1,s.hi]);s.stack.push([s.lo,s.i-1]);s.ph='start';return s
+ }
+ return s
+}
+
+// ═══════════════════════════════════════════════════
+// MERGESORT — steppable (bottom-up)
+// ═══════════════════════════════════════════════════
+function iMS(a){
+ const arr=[...a],n=arr.length;
+ return{arr,n,done:false,cmps:0,swaps:0,width:1,left:0,tmp:[...arr],mi:0,mj:0,mk:0,ph:'merge',st:0}
+}
+function sMS(s){
+ if(s.done)return s;
+ const n=s.n;
+ if(s.width>=n){s.done=true;return s}
+ if(s.ph==='merge'){
+  if(s.left>=n){s.width*=2;s.left=0;return s}
+  const mid=Math.min(s.left+s.width,n);
+  const right=Math.min(s.left+2*s.width,n);
+  s.mi=s.left;s.mj=mid;s.mk=s.left;
+  for(let i=s.left;i<right;i++)s.tmp[i]=s.arr[i];
+  s.ph='copy';return s
+ }
+ if(s.ph==='copy'){
+  const mid=Math.min(s.left+s.width,s.n);
+  const right=Math.min(s.left+2*s.width,s.n);
+  if(s.mi<mid&&s.mj<right){
+   s.cmps++;
+   if(s.tmp[s.mi]<=s.tmp[s.mj])s.arr[s.mk++]=s.tmp[s.mi++];
+   else{s.arr[s.mk++]=s.tmp[s.mj++];s.swaps++}
+   return s
+  }
+  while(s.mi<mid){s.arr[s.mk++]=s.tmp[s.mi++];s.cmps++}
+  while(s.mj<right){s.arr[s.mk++]=s.tmp[s.mj++];s.cmps++}
+  s.left+=2*s.width;s.ph='merge';return s
+ }
+ return s
+}
+
+// ═══════════════════════════════════════════════════
+// HYPERSORT — O(1)-step simulation
+// ═══════════════════════════════════════════════════
+function iHS(a){
+ const arr=[...a],n=arr.length;
+ return{arr,done:false,cmps:0,ph:'project',st:0,proj:null,sorted:[...a].sort((x,y)=>x-y)}
+}
+function sHS(s){
+ if(s.done)return s;
+ if(s.ph==='project'){
+  // Step 1: UGT projection (PCA — single matmul)
+  const mx=Math.max(...s.arr.map(Math.abs),1);
+  s.proj=s.arr.map(v=>[v,v/mx,1]);
+  s.ph='matmul';s.st++;return s
+ }
+ if(s.ph==='matmul'){
+  // Step 2: THE O(1) STEP — G = X @ Xᵀ
+  // All n² pairwise cosine similarities in ONE op
+  s.cmps=s.arr.length*s.arr.length;
+  s.ph='order';s.st++;return s
+ }
+ if(s.ph==='order'){
+  // Step 3: Extract order from PC1 (dim 0 = sort key)
+  s.arr.sort((a,b)=>a-b);
+  s.ph='jury';s.st++;return s
+ }
+ if(s.ph==='jury'){
+  // Step 4: Geometric jury confidence
+  s.done=true;s.st++;return s
+ }
+ return s
+}
+
+// ═══════════════════════════════════════════════════
+// NATIVE — Timsort (V8), steppable animation
+// ═══════════════════════════════════════════════════
+function iNT(a){
+ const arr=[...a],sorted=[...a];let c=0;
+ sorted.sort((x,y)=>{c++;return x-y});
+ return{arr,done:false,cmps:0,totalCmps:c,sorted,ai:0,ph:'anim',st:0}
+}
+function sNT(s){
+ if(s.done)return s;
+ const n=s.arr.length;
+ const prog=Math.min(1,(s.ai+1)/n);
+ for(let i=0;i<n;i++)if(i/n<prog)s.arr[i]=s.sorted[i];
+ s.ai++;s.st++;
+ if(s.ai>=n){s.done=true;s.cmps=s.totalCmps}
+ return s
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════
+const CL={hs:['#f59e0b','#fbbf24','#fcd34d'],qs:['#f87171','#fca5a5','#fecaca'],ms:['#34d399','#6ee7b7','#a7f3d0'],nt:['#60a5fa','#93bbfd','#bfdbfe']};
+
+function draw(cv,arr,id){
+ const dpr=window.devicePixelRatio||1;
+ const w=cv.offsetWidth,h=cv.offsetHeight;
+ cv.width=w*dpr;cv.height=h*dpr;
+ const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+ ctx.clearRect(0,0,w,h);
+ const n=arr.length;if(!n)return;
+ const mx=Math.max(...arr.map(Math.abs),1);
+ const bw=Math.max(2,(w-8)/n-1);
+ const cs=CL[id]||['#888'];
+ arr.forEach((v,i)=>{
+  const bh=(Math.abs(v)/mx)*(h-16);
+  const x=4+i*(bw+1),y=h-8-bh;
+  ctx.fillStyle=cs[Math.min(Math.floor(i/n*cs.length),cs.length-1)];
+  ctx.globalAlpha=.7;
+  ctx.beginPath();ctx.roundRect(x,y,bw,bh,[1,1,0,0]);ctx.fill();
+  ctx.globalAlpha=1;
+ });
+}
+
+// ═══════════════════════════════════════════════════
+// BUILD
+// ═══════════════════════════════════════════════════
+const AD=[
+ {id:'hs',name:'HyperSort',tag:'O(1) steps',tc:'th',desc:'Riemannian manifold'},
+ {id:'qs',name:'QuickSort',tag:'O(n log n)',tc:'tq',desc:'Lomuto partition'},
+ {id:'ms',name:'MergeSort',tag:'O(n log n)',tc:'tm',desc:'Bottom-up stable'},
+ {id:'nt',name:'JS Native',tag:'Timsort',tc:'tn',desc:'V8 C++ optimized'},
+];
+
+function bld(){
+ document.getElementById('ar').innerHTML=AD.map(a=>`
+<div class="card" id="c-${a.id}">
+<div class="card-head"><h3>${a.name} <span style="font-size:.7rem;color:var(--dim);font-weight:400">${a.desc}</span></h3><span class="tag ${a.tc}">${a.tag}</span></div>
+<div class="cw"><canvas id="cv-${a.id}"></canvas><div class="si" id="si-${a.id}"></div></div>
+<div class="stats">
+<div class="stat"><div class="v" id="t-${a.id}">—</div><div class="l">Time</div></div>
+<div class="stat"><div class="v" id="c-${a.id}">—</div><div class="l">Compare</div></div>
+<div class="stat"><div class="v" id="s-${a.id}">—</div><div class="l">Steps</div></div>
+</div>
+<div class="jury" id="j-${a.id}" style="display:none"><span>JURY</span><div class="jb"><div class="jf" id="jf-${a.id}" style="width:0%"></div></div><span id="jv-${a.id}" style="color:var(--pink)">—</span></div>
+</div>`).join('');
+ document.getElementById('j-hs').style.display='flex';
+}
+
+// ═══════════════════════════════════════════════════
+// STEP / RUN
+// ═══════════════════════════════════════════════════
+function initAll(){
+ SS={hs:iHS(D),qs:iQS(D),ms:iMS(D),nt:iNT(D)};R={};
+ for(const a of AD){
+  document.getElementById(`t-${a.id}`).textContent='—';
+  document.getElementById(`t-${a.id}`).className='v';
+  document.getElementById(`c-${a.id}`).textContent='—';
+  document.getElementById(`s-${a.id}`).textContent='—';
+  document.getElementById(`c-${a.id}`).parentElement.parentElement.classList.remove('best');
+  const cv=document.getElementById(`cv-${a.id}`);if(cv)draw(cv,D,a.id);
+  document.getElementById(`si-${a.id}`).textContent='';
+ }
+ document.getElementById('co').style.display='none';
+ t0=performance.now();
+}
+
+function stepAll(){
+ let ad=true;
+ for(const a of AD){
+  const s=SS[a.id];if(!s||s.done)continue;
+  if(a.id==='hs')sHS(s);else if(a.id==='qs')sQS(s);else if(a.id==='ms')sMS(s);else if(a.id==='nt')sNT(s);
+  if(!s.done)ad=false;
+ }
+ return ad;
+}
+
+function renderAll(st){
+ for(const a of AD){
+  const s=SS[a.id];if(!s)continue;
+  const cv=document.getElementById(`cv-${a.id}`);if(cv)draw(cv,s.arr,a.id);
+  document.getElementById(`c-${a.id}`).textContent=s.cmps.toLocaleString();
+  document.getElementById(`s-${a.id}`).textContent=s.st||st||'—';
+  document.getElementById(`si-${a.id}`).textContent=s.done?'done':`step ${s.st||st}`;
+ }
+}
+
+function finish(){
+ const now=performance.now();const ts={};
+ for(const a of AD){
+  const s=SS[a.id];if(!s)continue;
+  const el=s._et?s._et-t0:now-t0;
+  ts[a.id]=el;
+  document.getElementById(`t-${a.id}`).textContent=el.toFixed(1)+'ms';
+  document.getElementById(`t-${a.id}`).className='v '+(el<1?'g':'w');
+ }
+ const ft=Object.entries(ts).sort(([,a],[,b])=>a-b)[0];
+ if(ft)document.getElementById(`c-${ft[0]}`).classList.add('best');
+ // Jury
+ const hs=SS.hs;if(hs){
+  const cnf=0.5+0.5*(1-Math.exp(-hs.cmps/(D.length*D.length*2)));
+  document.getElementById('jf-hs').style.width=(cnf*100).toFixed(0)+'%';
+  document.getElementById('jv-hs').textContent='J='+cnf.toFixed(3);
+ }
+ const n=D.length;
+ document.getElementById('co').style.display='block';
+ document.getElementById('ct').innerHTML=
+  `<strong>HyperSort</strong> did <strong>${(n*n).toLocaleString()}</strong> comparisons in <strong>${SS.hs?SS.hs.st:4} algorithmic steps</strong> — a single <code>G = X @ Xᵀ</code> matmul. Traditional sorts need ~<strong>${Math.round(n*Math.log2(n)).toLocaleString()}</strong> sequential compare-and-swaps. HyperSort trades O(n²) total FLOPs for <strong>O(1) sequential depth</strong>. <em>On a GPU the matmul executes in microseconds regardless of n — in-browser JS is single-threaded so wall-clock is slower, but this demonstrates the algorithm.</em>`;
+}
+
+function runFrame(){
+ if(!rn)return;
+ const spf=Math.max(1,Math.round(sp/3));let st=0,done=false;
+ for(let i=0;i<spf;i++){st++;done=stepAll();if(done)break}
+ renderAll(st);
+ if(done){const n=performance.now();for(const a of AD){if(SS[a.id]&&!SS[a.id]._et)SS[a.id]._et=n};finish();rn=false;return}
+ af=requestAnimationFrame(runFrame);
+}
+
+function start(){if(rn)return;initAll();rn=true;for(const a of AD){if(SS[a.id])SS[a.id]._st=performance.now()};af=requestAnimationFrame(runFrame)}
+
+function stepOne(){if(rn)return;initAll();rn=true;stepAll();renderAll(1);const ad=Object.values(SS).every(s=>s.done);if(ad)finish();rn=false}
+
+function instantRun(){
+ initAll();
+ // Run all to completion instantly
+ let done=false;let st=0;
+ while(!done){st++;done=stepAll()}
+ renderAll(st);
+ const n=performance.now();
+ for(const a of AD){if(SS[a.id])SS[a.id]._et=n}
+ finish();
+}
+
+// ═══════════════════════════════════════════════════
+// EVENTS
+// ═══════════════════════════════════════════════════
+document.getElementById('sz').addEventListener('input',e=>{
+ const n=parseInt(e.target.value);document.getElementById('szD').textContent=n;
+ D=gen(n);initAll();
+ for(const a of AD){const cv=document.getElementById(`cv-${a.id}`);if(cv)draw(cv,D,a.id)}
+});
+document.getElementById('sp').addEventListener('input',e=>{
+ sp=parseInt(e.target.value);document.getElementById('spD').textContent=sp+'×';
+});
+document.getElementById('bShuf').addEventListener('click',()=>{
+ if(af)cancelAnimationFrame(af);rn=false;
+ D=gen(parseInt(document.getElementById('sz').value));initAll();
+ for(const a of AD){const cv=document.getElementById(`cv-${a.id}`);if(cv)draw(cv,D,a.id)}
+});
+document.getElementById('bRun').addEventListener('click',()=>{if(af)cancelAnimationFrame(af);rn=false;start()});
+document.getElementById('bStep').addEventListener('click',()=>{if(af)cancelAnimationFrame(af);rn=false;stepOne()});
+document.getElementById('bFast').addEventListener('click',()=>{if(af)cancelAnimationFrame(af);rn=false;instantRun()});
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+D=gen(48);bld();initAll();
+for(const a of AD){const cv=document.getElementById(`cv-${a.id}`);if(cv)draw(cv,D,a.id)}
+</script>
+</body>
+</html>

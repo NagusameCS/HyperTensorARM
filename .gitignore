@@ -1,0 +1,83 @@
+﻿# =============================================================================
+# HyperTensor — .gitignore
+# =============================================================================
+
+# CMake build directories
+build/
+build_*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+_CPack_Packages/
+
+# Compiled C libraries
+*.so
+*.so.*
+*.dylib
+*.dll
+*.a
+*.lib
+*.o
+*.obj
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.eggs/
+*.egg-info/
+dist/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env/
+
+# Python build artifacts
+build/
+*.whl
+
+# Models and large binary data (download separately)
+models/
+*.gguf
+*.bin
+*.safetensors
+*.pt
+*.pth
+
+# IDE / editor
+.vscode/
+.idea/
+.merge_temp/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Benchmark output (generated at runtime)
+benchmarks/
+duel_outputs/
+
+# Logs
+*.log
+*.out
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# OS
+*.pdb
+
+# ARM port session artifacts
+.venv-arm/
+.venv311/
+HyperTensor-original/
+outputs/
+benchmarks/optimizations/
+.gdbinit

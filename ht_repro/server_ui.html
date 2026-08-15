@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ht-repro : HyperTensor</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#ffffff;--bg-soft:#f9f9f8;--border:#e5e5e5;--text:#1a1a1a;--text-soft:#5c5c5c;--accent:#c0392b;--accent-l:#e74c3c;--blue:#2d6be4;--green:#1a7a4a;--yellow-bg:#fffbeb;--blue-bg:#eef4ff;--green-bg:#edfbf3;--red-bg:#fff5f5;--max-w:920px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:17px}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;-webkit-font-smoothing:antialiased}
+nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;height:58px;display:flex;align-items:center;justify-content:space-between}
+.nav-brand{font-weight:600;letter-spacing:-.02em;color:var(--text);text-decoration:none}
+.nav-links{display:flex;gap:1.6rem;list-style:none}
+.nav-links a{font-size:.85rem;font-weight:500;color:var(--text-soft);text-decoration:none}
+.nav-links a:hover{color:var(--text)}
+.nav-links a.active{color:var(--accent)}
+main{max-width:var(--max-w);margin:0 auto;padding:2rem 1.5rem 5rem}
+.section-label{display:block;font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-soft);margin-bottom:.6rem}
+h2{font-size:1.55rem;font-weight:700;letter-spacing:-.02em;line-height:1.25;margin-bottom:.8rem}
+h3{font-size:1.05rem;font-weight:600;margin-bottom:.4rem}
+
+/* status bar */
+#status-bar{padding:.6rem 1rem;margin-bottom:1.2rem;border-radius:10px;font-size:.85rem;display:none}
+#status-bar.ok{display:block;background:var(--green-bg);border:1px solid var(--green);color:var(--green)}
+#status-bar.err{display:block;background:var(--red-bg);border:1px solid var(--accent);color:var(--accent)}
+#status-bar.info{display:block;background:var(--blue-bg);border:1px solid var(--blue);color:var(--blue)}
+
+/* action bar */
+.action-bar{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1.2rem}
+.btn{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:.5rem 1.1rem;border-radius:6px;font-size:.82rem;font-family:inherit;font-weight:500;cursor:pointer;transition:all .12s;white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-l)}
+.btn.danger{background:transparent;border-color:var(--accent);color:var(--accent)}
+.btn.danger:hover{background:var(--accent);color:#fff}
+.btn.small{padding:.3rem .8rem;font-size:.75rem}
+.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+
+/* config */
+.config-panel{background:var(--bg-soft);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.2rem;display:none}
+.config-panel.visible{display:block}
+.config-panel label{display:block;font-size:.72rem;font-weight:600;color:var(--text-soft);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.config-panel input,.config-panel select{font-family:'IBM Plex Mono',monospace;font-size:.8rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);width:100%;max-width:200px}
+.config-row{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.6rem}
+.config-row>div{flex:1;min-width:120px}
+
+/* terminal */
+.term{background:#0a0a0b;border:1px solid var(--border);border-radius:10px;margin-bottom:1rem;overflow:hidden}
+.term-bar{padding:.5rem 1rem;display:flex;justify-content:space-between;align-items:center;background:var(--bg-soft);border-bottom:1px solid var(--border);font-size:.75rem}
+.term-bar .dots{display:flex;gap:5px}
+.term-bar .dots span{width:9px;height:9px;border-radius:50%}
+.term-bar .dots .r{background:#ff5f57}.term-bar .dots .y{background:#febc2e}.term-bar .dots .g{background:#28c840}
+.term-bar .ttl{font-family:'IBM Plex Mono',monospace;color:var(--text-soft);font-size:.7rem}
+.term-body{height:280px;overflow-y:auto;padding:.8rem 1rem;font-family:'IBM Plex Mono',monospace;font-size:.7rem;line-height:1.5;color:#c8c8c8}
+.term-body .line{padding:0;white-space:pre-wrap;word-break:break-all}
+.term-body .line.e{color:#ff5f57}.term-body .line.o{color:#28c840}.term-body .line.w{color:#febc2e}.term-body .line.i{color:#888}
+
+/* progress */
+.progress{background:var(--bg-soft);height:3px;border-radius:2px;margin-bottom:1rem;overflow:hidden}
+.progress .fill{height:100%;background:var(--green);transition:width .3s}
+
+/* stats */
+.stats{display:flex;gap:2rem;margin-bottom:1.2rem}
+.stats .s{text-align:center}
+.stats .s .v{font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700}
+.stats .s .l{font-size:.62rem;font-weight:600;color:var(--text-soft);text-transform:uppercase;letter-spacing:.08em}
+
+/* cards grid */
+.cards{display:flex;flex-direction:column;gap:.8rem;margin-bottom:2rem}
+.card{border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;background:var(--bg);cursor:pointer;transition:border-color .15s,transform .15s,box-shadow .15s}
+.card:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.06)}
+.card.running{border-color:#febc2e;opacity:.9;cursor:default}
+.card-head{display:flex;gap:.7rem;align-items:baseline;flex-wrap:wrap;margin-bottom:.3rem}
+.card-id{font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.card-tier{font-family:'IBM Plex Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.1em .5em;border-radius:3px;margin-left:auto}
+.t1{color:var(--green);background:var(--green-bg)}.t2{color:#8a5b16;background:var(--yellow-bg)}.t3{color:var(--accent);background:var(--red-bg)}
+.card-name{font-size:.95rem;font-weight:600;letter-spacing:-.01em;color:var(--text)}
+.card-desc{font-size:.82rem;color:var(--text-soft);margin-top:2px}
+.card-bottom{margin-top:.5rem;display:flex;align-items:center;gap:.8rem;font-size:.75rem}
+.card-bottom .st{font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--text-soft)}
+.card-bottom .st.g{color:var(--green)}.card-bottom .st.r{color:var(--accent)}
+.card-bottom .links{font-size:.7rem}
+.card-bottom .links a{color:var(--blue);text-decoration:none}
+.card-bottom .links a:hover{text-decoration:underline}
+
+/* gpu warn */
+.gpu-warn{background:var(--yellow-bg);border-left:3px solid #8a5b16;padding:.7rem 1rem;border-radius:0 6px 6px 0;margin-bottom:1rem;font-size:.82rem;color:var(--text-soft);display:none}
+
+/* tab */
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+footer{max-width:var(--max-w);margin:4rem auto 0;padding:2rem 1.5rem;border-top:1px solid var(--border);text-align:center;font-size:.82rem;color:var(--text-soft)}
+footer a{color:var(--text);text-decoration:underline;text-decoration-color:rgba(192,57,43,.35);text-decoration-thickness:1px;text-underline-offset:.18em}
+footer a:hover{color:var(--accent);text-decoration-color:var(--accent)}
+
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<nav>
+<a class="nav-brand" href="#">Nagusame<span style="color:var(--accent)">CS</span></a>
+<ul class="nav-links">
+<li><a href="#" class="active" data-tab="run">Run</a></li>
+<li><a href="#" data-tab="tools">Tools</a></li>
+<li><a href="#" data-tab="history">History</a></li>
+<li><a href="#" data-tab="about">About</a></li>
+<li><a href="https://nagusamecs.github.io/HyperTensor/" target="_blank">Website</a></li>
+</ul>
+</nav>
+
+<main>
+
+<!-- RUN -->
+<div class="tab-panel active" id="tab-run">
+<span class="section-label">ht-repro</span>
+<h2>Run Tests</h2>
+<div id="status-bar" class="info">Connecting to server...</div>
+
+<div class="action-bar">
+<button class="btn primary" onclick="runAll('T1')">Run All T1</button>
+<button class="btn" onclick="runOne('smoke')">Smoke Test</button>
+<button class="btn" id="btn-t2" style="display:none" onclick="runAll('T2')">Run All T2</button>
+<button class="btn danger" id="btn-stop" style="display:none" onclick="stop()">Stop</button>
+<button class="btn small" id="btn-cfg" onclick="document.getElementById('cfg').classList.toggle('visible')">Configure</button>
+</div>
+
+<div class="config-panel" id="cfg"><h3>GPU Settings</h3><div class="config-row">
+<div><label>Device</label><select id="d" onchange="saveCfg()"><option value="auto">Auto</option><option value="0">GPU 0</option><option value="1">GPU 1</option><option value="cpu">CPU only</option></select></div>
+<div><label>Warn util %</label><input type="number" id="w" value="75" min="0" max="100" onchange="saveCfg()"></div>
+<div><label>VRAM limit GB</label><input type="number" id="v" value="0" min="0" max="80" onchange="saveCfg()"></div>
+</div><p style="font-size:.75rem;color:var(--text-soft);margin-top:.3rem">Changes apply to next run. Warning appears when GPU utilization or VRAM exceeds threshold during benchmarks.</p></div>
+
+<div class="gpu-warn" id="gpu-warn"></div>
+
+<div class="term"><div class="term-bar"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="ttl" id="t-t">output</span><span style="font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:var(--text-soft)" id="t-n"></span></div>
+<div class="term-body" id="t-o"><div class="line i">Waiting for test selection...</div></div></div>
+
+<div class="progress"><div class="fill" id="p-bar" style="width:0"></div></div>
+<div class="stats"><div class="s"><div class="v" style="color:var(--green)" id="s-p">0</div><div class="l">Passed</div></div><div class="s"><div class="v" style="color:var(--accent)" id="s-f">0</div><div class="l">Failed</div></div></div>
+
+<span class="section-label" style="margin-top:1.8rem">Test Catalog</span>
+<div class="cards" id="cards"></div>
+</div>
+
+<!-- TOOLS -->
+<div class="tab-panel" id="tab-tools">
+<span class="section-label">HyperTensor Tools</span>
+<h2>Graft, Bench, Train, Compress, GTC, Safety, UGT, Models</h2>
+
+<div class="action-bar">
+<select id="tool-cat" onchange="loadToolCat()" style="font-family:'IBM Plex Mono',monospace;font-size:.82rem;border:1px solid var(--border);border-radius:6px;padding:.4rem .8rem;background:var(--bg);color:var(--text)">
+<option value="">Select category...</option></select>
+<button class="btn danger" id="btn-stop2" style="display:none" onclick="stop()">Stop</button>
+<button class="btn small" onclick="document.getElementById('cfg').classList.toggle('visible')">GPU Config</button>
+</div>
+
+<div class="gpu-warn" id="gpu-warn2"></div>
+
+<div class="cards" id="tool-cards"></div>
+
+<div class="term"><div class="term-bar"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="ttl" id="t-t2">output</span></div>
+<div class="term-body" id="t-o2"><div class="line i">Select a tool category above, then click a tool to run it. Live output appears here.</div></div></div>
+</div>
+
+<!-- HISTORY -->
+<div class="tab-panel" id="tab-history">
+<span class="section-label">ht-repro</span><h2>Run History</h2>
+<div id="h-c"><p style="color:var(--text-soft)">Loading...</p></div>
+</div>
+
+<!-- ABOUT -->
+<div class="tab-panel" id="tab-about">
+<span class="section-label">ht-repro</span><h2>About</h2>
+<div class="thread"><p>Official reproduction toolkit for the HyperTensor extended volume (Papers I-XVIII plus Mathematical Foundation for the Geometric Jury).</p>
+<p style="margin-top:.6rem"><strong>Website:</strong> <a href="https://nagusamecs.github.io/HyperTensor" style="color:var(--accent)">nagusamecs.github.io/HyperTensor</a></p>
+<p><strong>Reproduction guide:</strong> <a href="https://nagusamecs.github.io/HyperTensor/research/repro/" style="color:var(--accent)">Full guide with expected outputs</a></p>
+<p><strong>Install:</strong> <code style="font-family:'IBM Plex Mono',monospace;background:var(--bg-soft);padding:2px 6px;border-radius:3px">pip install ht-repro</code></p></div>
+</div>
+
+</main>
+<footer>&copy; HyperTensor Project &middot; <a href="https://github.com/NagusameCS/HyperTensor">GitHub</a> &middot; <a href="https://nagusamecs.github.io/HyperTensor/research/repro/">Reproduction Guide</a></footer>
+
+<script>
+var cat=[],env={},res={},rs={p:0,f:0,t:0,d:0},sse=null,svrUp=false;
+
+function S(id){return document.getElementById(id)}
+function E(t,c,p){var e=document.createElement(t);if(c)e.className=c;if(p)p.appendChild(e);return e}
+
+async function api(u){
+ try{var r=await fetch('/'+u);if(!r.ok)throw new Error(r.status);svrUp=true;S('status-bar').className='ok';S('status-bar').textContent='Server connected.';setTimeout(function(){S('status-bar').style.display='none'},2000);return await r.json()}
+ catch(e){svrUp=false;S('status-bar').className='err';S('status-bar').textContent='Server not reachable. Start it with: python -m ht_repro serve  or double-click ht-repro-ui.bat';S('status-bar').style.display='block';throw e}
+}
+
+async function init(){
+ S('status-bar').className='info';S('status-bar').textContent='Connecting...';S('status-bar').style.display='block';
+ try{
+  var a=await Promise.all([api('api/catalog'),api('api/env'),api('api/results')]);
+  cat=a[0];env=a[1];res=a[2];renderEnv();renderCards();
+  var s=await api('api/status');if(s&&s.running)showRun(s.test_id);
+  connectSSE()
+ }catch(e){}
+}
+
+function renderEnv(){
+ var g=env&&env.gpu||{};var av=env&&env.tier_available||'T1';
+ if(av==='T2'||av==='T3')S('btn-t2').style.display='';
+}
+
+function renderCards(){
+ var lr=(res.runs||[]).slice(-1)[0];var lt=lr?lr.tests:{};
+ var h='';
+ cat.forEach(function(t){
+  var l=lt[t.id];var st=l?(l.status==='pass'?'PASS':'FAIL'):'',sc=l?(l.status==='pass'?'g':'r'):'';
+  var tm=l&&l.time?l.time.toFixed(1)+'s':'',tc=t.tier==='T1'?'t1':t.tier==='T2'?'t2':'t3';
+  var ok=t.tier==='T1'||(t.tier==='T2'&&(av==='T2'||av==='T3'));
+  h+='<div class="card'+(ok?'" onclick="runOne(\''+t.id+'\')"':'')
+    +'" id="card-'+t.id+'" style="'+(ok?'':'opacity:.5;cursor:default')+'">'
+    +'<div class="card-head"><span class="card-id">'+t.id+'</span><span class="card-tier '+tc+'">'+t.tier+'</span></div>'
+    +'<div class="card-name">'+t.name+'</div><div class="card-desc">'+t.desc+'</div>'
+    +'<div class="card-bottom">'
+    +(l?'<span class="st '+sc+'">'+st+'</span>':'<span class="st">pending</span>')
+    +'<span class="st">'+tm+'</span>'
+    +'<span class="links"><a href="https://nagusamecs.github.io/HyperTensor/research/repro/" target="_blank" onclick="event.stopPropagation()">guide</a>'
+    +' &middot; <a href="https://nagusamecs.github.io/HyperTensor/" target="_blank" onclick="event.stopPropagation()">site</a></span>'
+    +'</div></div>';
+ });
+ S('cards').innerHTML=h
+}
+
+// Terminal
+function tClear(){S('t-o').innerHTML='';S('t-n').textContent='';S('p-bar').style.width='0';rs={p:0,f:0,t:0,d:0};updS()}
+function tLog(txt,c){var e=E('div','line '+(c||''));e.textContent=txt;S('t-o').appendChild(e);S('t-o').scrollTop=S('t-o').scrollHeight}
+function tTitle(s){S('t-t').textContent=s}
+function updP(){var p=rs.t?Math.round(rs.d/rs.t*100):0;S('p-bar').style.width=p+'%';S('t-n').textContent=rs.d+'/'+rs.t}
+function updS(){S('s-p').textContent=rs.p;S('s-f').textContent=rs.f}
+
+// SSE
+function connectSSE(){if(sse)sse.close();sse=new EventSource('/api/stream');
+ sse.addEventListener('connected',function(){});
+ sse.addEventListener('test_start',function(e){var d=JSON.parse(e.data);rs.t++;if(rs.t===1)tClear();tTitle('Running: '+d.name);tLog('--- '+d.name+' ---','i');updP();var c=S('card-'+d.test_id);if(c)c.classList.add('running');S('btn-stop').style.display=''});
+ sse.addEventListener('test_output',function(e){var d=JSON.parse(e.data),c='';if(/ERROR|FAIL/.test(d.line))c='e';else if(/PASS|OK/.test(d.line))c='o';else if(/WARN/.test(d.line))c='w';tLog(d.line,c)});
+ sse.addEventListener('test_done',function(e){var d=JSON.parse(e.data);tLog((d.passed?'PASSED':'FAILED')+' ('+d.time+'s)',d.passed?'o':'e');rs.d++;d.passed?rs.p++:rs.f++;updP();updS();var c=S('card-'+d.test_id);if(c)c.classList.remove('running');renderCards()});
+ sse.addEventListener('test_stopped',function(e){tLog('--- STOPPED ---','w');idle()});
+ sse.addEventListener('test_error',function(e){var d=JSON.parse(e.data);tLog('ERROR: '+d.msg,'e');rs.f++;rs.d++;updS();updP();idle()});
+ sse.addEventListener('gpu_warn',function(e){var d=JSON.parse(e.data);S('gpu-warn').textContent='GPU warning: '+d.msg;S('gpu-warn').style.display='block'});
+ sse.addEventListener('status',function(e){var d=JSON.parse(e.data);if(!d.running)idle()});
+ sse.addEventListener('tool_start',function(e){var d=JSON.parse(e.data);S('t-o2').innerHTML+='<div class="line i">--- '+d.name+' ---</div>';S('t-o2').scrollTop=S('t-o2').scrollHeight;S('btn-stop2').style.display='';var c=S('tcard-'+d.tool_id.split('/')[1]);if(c)c.classList.add('running')});
+ sse.addEventListener('tool_output',function(e){var d=JSON.parse(e.data),c='';if(/ERROR|FAIL/.test(d.line))c='e';else if(/PASS|OK/.test(d.line))c='o';else if(/WARN/.test(d.line))c='w';S('t-o2').innerHTML+='<div class="line '+c+'">'+d.line+'</div>';S('t-o2').scrollTop=S('t-o2').scrollHeight});
+ sse.addEventListener('tool_done',function(e){var d=JSON.parse(e.data);S('t-o2').innerHTML+='<div class="line '+(d.passed?'o':'e')+'">'+(d.passed?'PASSED':'FAILED')+' ('+d.time+'s)</div>';S('t-o2').scrollTop=S('t-o2').scrollHeight;S('btn-stop2').style.display='none';var cs=document.querySelectorAll('.card.running');for(var i=0;i<cs.length;i++)cs[i].classList.remove('running')});
+ sse.addEventListener('tool_error',function(e){var d=JSON.parse(e.data);S('t-o2').innerHTML+='<div class="line e">ERROR: '+d.msg+'</div>';S('t-o2').scrollTop=S('t-o2').scrollHeight;S('btn-stop2').style.display='none'});
+ sse.onerror=function(){setTimeout(connectSSE,2000)}
+}
+function showRun(id){S('btn-stop').style.display='';var c=S('card-'+id);if(c)c.classList.add('running')}
+function idle(){S('btn-stop').style.display='none';S('btn-stop2').style.display='none';var cs=document.querySelectorAll('.card.running');for(var i=0;i<cs.length;i++)cs[i].classList.remove('running')}
+
+// Actions
+async function runOne(id){if(!svrUp)return;if(rs.t>rs.d)return;S('gpu-warn').style.display='none';try{await api('api/run/'+id)}catch(e){}}
+async function runAll(tier){if(!svrUp)return;if(rs.t>rs.d)return;S('gpu-warn').style.display='none';try{await api('api/run_all?tier='+tier)}catch(e){}}
+async function stop(){try{await api('api/stop')}catch(e){}}
+async function saveCfg(){var dv=S('d').value,wv=S('w').value,vv=S('v').value;try{await api('api/gpu_config?device='+dv+'&warn_baseline_pct='+wv+'&vram_limit_gb='+vv)}catch(e){}}
+
+// Tabs
+var navs=document.querySelectorAll('.nav-links a');
+for(var i=0;i<navs.length;i++){navs[i].addEventListener('click',function(e){e.preventDefault();
+ for(var j=0;j<navs.length;j++)navs[j].classList.remove('active');this.classList.add('active');
+ var ps=document.querySelectorAll('.tab-panel');for(var k=0;k<ps.length;k++)ps[k].classList.remove('active');
+ S('tab-'+this.dataset.tab).classList.add('active');
+ if(this.dataset.tab==='history')renderHist();
+ if(this.dataset.tab==='tools')loadToolCats()
+})}
+
+function renderHist(){
+ var runs=(res.runs||[]).slice().reverse(),h='';
+ if(!runs.length){S('h-c').innerHTML='<p style="color:var(--text-soft)">No runs yet.</p>';return}
+ runs.forEach(function(r){
+  var pct=r.passed+r.failed>0?Math.round(r.passed/(r.passed+r.failed)*100):0;
+  h+='<div class="card" style="cursor:default;margin-bottom:.6rem"><div class="card-head"><span class="card-id">'+r.timestamp+'</span><span class="card-tier" style="color:var(--green)">'+r.passed+'/'+(r.passed+r.failed)+'</span></div>';
+  h+='<div class="progress" style="margin:.5rem 0"><div class="fill" style="width:'+pct+'%"></div></div>';
+  h+='<table style="width:100%;font-size:.78rem;border-collapse:collapse">';
+  var ts=r.tests||{};
+  Object.keys(ts).forEach(function(id){
+   var tr=ts[id],t=cat.find(function(x){return x.id===id});
+   h+='<tr style="border-top:1px solid var(--border)"><td style="padding:2px 6px;color:'+(tr.status==='pass'?'var(--green)':'var(--accent)')+'">'+(tr.status==='pass'?'PASS':'FAIL')+'</td><td style="padding:2px 6px">'+(t?t.name:id)+'</td><td style="padding:2px 6px;font-family:\'IBM Plex Mono\',monospace;font-size:.7rem;color:var(--text-soft)">'+(tr.time?tr.time.toFixed(1)+'s':'')+'</td></tr>';
+  });
+  h+='</table></div>';
+ });
+ S('h-c').innerHTML=h
+}
+
+// Tools
+var toolCats={};
+async function loadToolCats(){
+ try{var d=await api('api/tools');toolCats=d;var sel=S('tool-cat');sel.innerHTML='<option value="">Select category...</option>';
+  Object.keys(d).forEach(function(c){sel.innerHTML+='<option value="'+c+'">'+c+' ('+Object.keys(d[c]).length+')</option>'});}
+ catch(e){}
+}
+function loadToolCat(){
+ var cat=S('tool-cat').value;
+ if(!cat){S('tool-cards').innerHTML='';return}
+ var tools=toolCats[cat]||{},h='';
+ Object.keys(tools).forEach(function(id){
+  var t=tools[id];
+  h+='<div class="card" onclick="runTool(\''+cat+'\',\''+id+'\')" id="tcard-'+id+'">'
+   +'<div class="card-head"><span class="card-id">'+id+'</span><span class="card-tier '+(t.tier==='T1'?'t1':t.tier==='T2'?'t2':'t3')+'">'+t.tier+'</span></div>'
+   +'<div class="card-name">'+t.name+'</div></div>';
+ });
+ S('tool-cards').innerHTML=h
+}
+async function runTool(cat,id){
+ if(!svrUp)return;S('gpu-warn2').style.display='none';S('btn-stop2').style.display='';
+ S('t-o2').innerHTML='<div class="line i">Running: '+cat+'/'+id+'...</div>';
+ try{await api('api/run_tool/'+cat+'/'+id)}catch(e){}
+}
+// SSE tool listeners are in connectSSE
+
+init();
+</script>
+</body>
+</html>
