@@ -117,8 +117,28 @@ gemv_dual_q8_0_row_neon_sdot(const int8_t *xq, const float *xs, int n_blocks,
 {
     float32x4_t acc_a = vdupq_n_f32(0.0f);
     float32x4_t acc_b = vdupq_n_f32(0.0f);
-    const int32x4_t zero = vdupq_n_s32(0);
+#if defined(__ARM_FEATURE_I8MM)
+    /* Apple Silicon i8mm: SMMLA does 2x8 . 8x2 -> 2x2 int32 (8 MACs/lane).
+     * One SMMLA per matrix per 16 codes replaces two SDOTs. */
+    for (int b = 0; b < n_blocks; ++b) {
+        const int8_t *xq16 = xq + b * 32;
+        int32x4_t da = vdupq_n_s32(0);
+        int32x4_t db = vdupq_n_s32(0);
 
+        for (int i = 0; i < 32; i += 16) {
+            const int8x16_t xq0 = vld1q_s8(xq16 + i);
+            da = vmmlaq_s32(da, vld1q_s8(codes_a + i), xq0);
+            db = vmmlaq_s32(db, vld1q_s8(codes_b + i), xq0);
+        }
+        codes_a += 32;
+        codes_b += 32;
+
+        const float32x4_t sa_sx = vdupq_n_f32(scales_a[b] * xs[b]);
+        const float32x4_t sb_sx = vdupq_n_f32(scales_b[b] * xs[b]);
+        acc_a = vmlaq_f32(acc_a, vcvtq_f32_s32(da), sa_sx);
+        acc_b = vmlaq_f32(acc_b, vcvtq_f32_s32(db), sb_sx);
+    }
+#else
     for (int b = 0; b < n_blocks; ++b) {
         const int8x16_t xq0 = vld1q_s8(xq + b * 32);
         const int8x16_t xq1 = vld1q_s8(xq + b * 32 + 16);
@@ -130,9 +150,9 @@ gemv_dual_q8_0_row_neon_sdot(const int8_t *xq, const float *xs, int n_blocks,
         codes_a += 32;
         codes_b += 32;
 
-        int32x4_t da = vdotq_s32(zero, ca0, xq0);
+        int32x4_t da = vdotq_s32(vdupq_n_s32(0), ca0, xq0);
         da = vdotq_s32(da, ca1, xq1);
-        int32x4_t db = vdotq_s32(zero, cb0, xq0);
+        int32x4_t db = vdotq_s32(vdupq_n_s32(0), cb0, xq0);
         db = vdotq_s32(db, cb1, xq1);
 
         /* Block scale: W scale * x block scale. */
@@ -142,7 +162,7 @@ gemv_dual_q8_0_row_neon_sdot(const int8_t *xq, const float *xs, int n_blocks,
         acc_a = vmlaq_f32(acc_a, vcvtq_f32_s32(da), sa_sx);
         acc_b = vmlaq_f32(acc_b, vcvtq_f32_s32(db), sb_sx);
     }
-
+#endif
     *out_a = vaddvq_f32(acc_a);
     *out_b = vaddvq_f32(acc_b);
 }

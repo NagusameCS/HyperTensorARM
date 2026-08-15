@@ -1432,7 +1432,7 @@ static float fp16_to_fp32(uint16_t h)
         if (mant == 0) {
             /* Positive/negative zero */
             float f;
-            kmemcpy(&f, &sign, 4);
+            __builtin_memcpy(&f, &sign, 4);
             return f;
         }
         /* Denormalized — normalize it */
@@ -1446,14 +1446,14 @@ static float fp16_to_fp32(uint16_t h)
         /* Inf / NaN */
         uint32_t bits = sign | 0x7F800000u | (mant << 13);
         float f;
-        kmemcpy(&f, &bits, 4);
+        __builtin_memcpy(&f, &bits, 4);
         return f;
     }
 
     exp = exp + 127 - 15;
     uint32_t bits = sign | (exp << 23) | (mant << 13);
     float f;
-    kmemcpy(&f, &bits, 4);
+    __builtin_memcpy(&f, &bits, 4);
     return f;
 }
 
@@ -1462,7 +1462,7 @@ static float bf16_to_fp32(uint16_t h)
 {
     uint32_t bits = (uint32_t)h << 16;
     float f;
-    kmemcpy(&f, &bits, 4);
+    __builtin_memcpy(&f, &bits, 4);
     return f;
 }
 
@@ -4531,6 +4531,35 @@ static void gemv_worker_avx2(void *arg)
 
 static int llm_neon_fast = -1;
 
+/* Branchless fp16->fp32 for block scales (normals only). The equivalent
+ * helper in llm.c sits inside the x86-only guard, so ARM gets its own.
+ * Handles subnormals exactly like the scalar reference (some Q4_K dmin
+ * values are subnormal fp16). */
+static inline float arm_f16_to_f32(uint16_t h)
+{
+    uint32_t sign = ((uint32_t)h & 0x8000u) << 16;
+    uint32_t exp  = (h >> 10) & 0x1F;
+    uint32_t mant = h & 0x3FF;
+    uint32_t bits;
+    if (exp == 0) {
+        if (mant == 0) { bits = sign; }
+        else {
+            while (!(mant & 0x400)) { mant <<= 1; exp--; }
+            exp++;
+            mant &= 0x3FF;
+            exp = exp + 127 - 15;
+            bits = sign | (exp << 23) | (mant << 13);
+        }
+    } else if (exp == 31) {
+        bits = sign | 0x7F800000u | (mant << 13);
+    } else {
+        exp = exp + 127 - 15;
+        bits = sign | (exp << 23) | (mant << 13);
+    }
+    union { uint32_t u; float f; } u = { .u = bits };
+    return u.f;
+}
+
 /* Temp profiling: accumulate llm_gemv time by (out_dim,in_dim,type). */
 typedef struct { int out_dim, in_dim, type; uint64_t us; int calls; } gemv_prof_t;
 static gemv_prof_t gemv_prof[64];
@@ -4605,8 +4634,8 @@ static float llm_vec_dot_q4k_neon(const uint8_t *p, const int8_t *xq,
     for (int b = 0; b < nsb; b++) {
         uint16_t dh = *(const uint16_t *)p;
         uint16_t dmh = *(const uint16_t *)(p + 2);
-        float d    = fp16_to_fp32(dh);
-        float dmin = fp16_to_fp32(dmh);
+        float d    = arm_f16_to_f32(dh);
+        float dmin = arm_f16_to_f32(dmh);
         const uint8_t *scales = p + 4;
         const uint8_t *qs     = p + 16;
         p += 144;
@@ -4674,7 +4703,7 @@ static float llm_vec_dot_q6k_neon(const ggml_q6_k_t *block, const int8_t *xq,
         const uint8_t *ql = block[b].ql;
         const uint8_t *qh = block[b].qh;
         const int8_t  *sc = block[b].scales;
-        float d = fp16_to_fp32(block[b].d);
+        float d = arm_f16_to_f32(block[b].d);
 
         const int8_t  *xqb = xq + b * 256;
         const float   *xsb = xs + b * 16;
@@ -4765,7 +4794,7 @@ static float llm_vec_dot_q5_0_neon(const uint8_t *p, const int8_t *xq,
 
     for (int b = 0; b < nb; b++) {
         uint16_t dh = *(const uint16_t *)p;          /* unaligned: fine on arm64 */
-        float d = fp16_to_fp32(dh);
+        float d = arm_f16_to_f32(dh);
         uint32_t qh = *(const uint32_t *)(p + 2);
         const uint8_t *qs = p + 6;
         p += 22;
@@ -4807,7 +4836,7 @@ static float llm_vec_dot_q8_0_neon(const ggml_q8_0_t *block, const int8_t *xq,
     (void)sum16;
 
     for (int b = 0; b < nb; b++) {
-        float d = fp16_to_fp32(*(const uint16_t *)&block[b].d);
+        float d = arm_f16_to_f32(*(const uint16_t *)&block[b].d);
         const int8_t *qs = block[b].qs;
         const int8_t *xqb = xq + b * 32;
         const float *xsb = xs + b * 2;

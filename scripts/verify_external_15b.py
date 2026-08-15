@@ -75,7 +75,13 @@ import torch.nn.functional as F
 
 warnings.filterwarnings('ignore')
 torch.set_grad_enabled(False)
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
+
+def _sync_device():
+    if DEVICE == "cuda":
+        torch.cuda.synchronize()
+    elif DEVICE == "mps":
+        torch.mps.synchronize()
 OUT = Path("benchmarks/external_verification_15b")
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -112,7 +118,10 @@ d_model = model.config.hidden_size
 n_layers = model.config.num_hidden_layers
 MID_LAYER = n_layers // 2
 print(f"  d={d_model}, layers={n_layers}, mid_layer={MID_LAYER}")
-print(f"  VRAM: {torch.cuda.memory_allocated()/1e9:.1f}GB")
+if torch.cuda.is_available():
+    print(f"  VRAM: {torch.cuda.memory_allocated()/1e9:.1f}GB")
+else:
+    print(f"  Device: {DEVICE} (no CUDA VRAM counter)")
 
 def get_hidden(texts, batch_size=16):
     """Batched hidden state extraction from REAL model."""
@@ -226,17 +235,17 @@ for N in [1000000]:  # Conclusive at N=1M where O(N) >> O(S)
         pool = F.normalize(torch.randn(N, K, device=DEVICE), dim=1)
         queries = F.normalize(torch.randn(B, K, device=DEVICE), dim=1)
         
-        torch.cuda.synchronize()
+        _sync_device()
         t0 = time.perf_counter()
         _ = queries @ pool.T  # O(B·N·K)
-        torch.cuda.synchronize()
+        _sync_device()
         t_full = (time.perf_counter() - t0) * 1000
         
         idx = torch.randperm(N)[:S]
-        torch.cuda.synchronize()
+        _sync_device()
         t0 = time.perf_counter()
         _ = queries @ pool[idx].T  # O(B·S·K)
-        torch.cuda.synchronize()
+        _sync_device()
         t_jury = (time.perf_counter() - t0) * 1000
         
         speedup = t_full / max(t_jury, 0.0001)
