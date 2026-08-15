@@ -5046,10 +5046,12 @@ static void llm_gemv(float *out, const void *weight, const float *x,
 #endif
 
 #if defined(__aarch64__) && defined(__ARM_FEATURE_DOTPROD)
-    /* Apple ARM fast path: SDOT kernels + SMP row split for Q5_0/Q8_0/Q4_K/Q6_K. */
+    /* Apple ARM fast path: SDOT kernels + SMP row split for Q5_0/Q8_0/Q4_K/Q6_K,
+     * plus SMP row split with NEON vec_dot for F16/F32 weights. */
     if (llm_neon_fast_enabled() && in_dim >= 16 &&
         (type == GGML_TYPE_Q4_K || type == GGML_TYPE_Q6_K ||
-         type == GGML_TYPE_Q5_0 || type == GGML_TYPE_Q8_0)) {
+         type == GGML_TYPE_Q5_0 || type == GGML_TYPE_Q8_0 ||
+         type == GGML_TYPE_F16 || type == GGML_TYPE_F32)) {
         int n16 = in_dim / 16;
         static int8_t  *xq_s = NULL;
         static float   *xs_s = NULL;

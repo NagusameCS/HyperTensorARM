@@ -15,14 +15,14 @@
       2.3825
     ]
   },
-  "note": "llama.cpp oracle = llama.cpp fresh build (third_party/llama.cpp), per-token NLL over the same WikiText slice; tokenizer bit-identical.",
+  "note": "llama.cpp oracle = fresh llama.cpp build (third_party/llama.cpp), per-token NLL over the same WikiText slice; tokenizer bit-identical. fp16/F32 GEMVs use SMP NEON row split.",
   "models": {
     "0.5B": {
       "rows": [
         {
           "format": "fp16 (exported)",
           "size_mb": 1208,
-          "decode_tok_s": 10.8,
+          "decode_tok_s": 37.7,
           "wiki_ppl_ours": 10.98,
           "wiki_ppl_llama": null,
           "speedup": "1.0x"
@@ -62,7 +62,7 @@
         {
           "format": "fp16 (exported)",
           "size_mb": 3560,
-          "decode_tok_s": 3.0,
+          "decode_tok_s": 13.6,
           "wiki_ppl_ours": 6.94,
           "wiki_ppl_llama": 6.73,
           "speedup": "1.0x"
