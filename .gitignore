@@ -84,4 +84,4 @@ benchmarks/optimizations/
 civilized-HyperTensor/
 !hyperretro/models/
 !hyperretro/models/**
-!hyperretro/models/__pycache__/
+hyperretro/models/__pycache__/
