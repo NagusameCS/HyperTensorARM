@@ -23,6 +23,7 @@ classifiers = [
 
 [project.scripts]
 hyperretro = "hyperretro.cli:main"
+hyperarm = "hyperretro.models.e2e_cli:main"
 
 [project.optional-dependencies]
 torch = ["torch>=2.0"]
