@@ -4535,29 +4535,12 @@ static int llm_neon_fast = -1;
  * helper in llm.c sits inside the x86-only guard, so ARM gets its own.
  * Handles subnormals exactly like the scalar reference (some Q4_K dmin
  * values are subnormal fp16). */
+/* Hardware fp16->fp32 via NEON fcvt: bit-exact with the scalar reference for
+ * all 65536 fp16 values (including subnormals), single instruction. */
 static inline float arm_f16_to_f32(uint16_t h)
 {
-    uint32_t sign = ((uint32_t)h & 0x8000u) << 16;
-    uint32_t exp  = (h >> 10) & 0x1F;
-    uint32_t mant = h & 0x3FF;
-    uint32_t bits;
-    if (exp == 0) {
-        if (mant == 0) { bits = sign; }
-        else {
-            while (!(mant & 0x400)) { mant <<= 1; exp--; }
-            exp++;
-            mant &= 0x3FF;
-            exp = exp + 127 - 15;
-            bits = sign | (exp << 23) | (mant << 13);
-        }
-    } else if (exp == 31) {
-        bits = sign | 0x7F800000u | (mant << 13);
-    } else {
-        exp = exp + 127 - 15;
-        bits = sign | (exp << 23) | (mant << 13);
-    }
-    union { uint32_t u; float f; } u = { .u = bits };
-    return u.f;
+    float16x4_t v = vreinterpret_f16_u16(vdup_n_u16(h));
+    return vgetq_lane_f32(vcvt_f32_f16(v), 0);
 }
 
 /* Temp profiling: accumulate llm_gemv time by (out_dim,in_dim,type). */
