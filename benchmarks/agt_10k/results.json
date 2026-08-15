@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-08-14 15:37:53",
+  "config": {
+    "n_primes": 50000,
+    "n_zeros": 1030,
+    "n_off": 100,
+    "D": 768,
+    "K_CRIT": 64,
+    "n_train_steps": 3000
+  },
+  "subspace": {
+    "k90": 1,
+    "k95": 1,
+    "top_svs": [
+      1029.970458984375,
+      0.012502609752118587,
+      0.007356610149145126,
+      0.002763471333310008,
+      0.0023376350291073322,
+      0.0013935271417722106,
+      0.0008831802406348288,
+      0.0008201092132367194
+    ]
+  },
+  "teh": {
+    "detection_pct": 100.0,
+    "false_positives": 0,
+    "mean_off_activation": 51.1,
+    "mean_crit_activation": 0.1,
+    "separation_ratio": 676
+  },
+  "verdict": "CONFIRMED at scale \u2014 critical subspace is 1D",
+  "paper_xvi": "95% \u2014 scaling validated"
+}

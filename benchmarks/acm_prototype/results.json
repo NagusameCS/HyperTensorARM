@@ -1,0 +1,12 @@
+{
+  "fp_error_mean": 0.0033,
+  "fp_error_max": 0.0063,
+  "off_error_mean": 1.4054,
+  "involution_error": 0.0036,
+  "fixed_point_dim": 1,
+  "expected_dim": 288,
+  "teh_detection": "15/15",
+  "teh_false_positives": "0/10",
+  "mean_off_act": 50.5,
+  "mean_crit_act": 0.0
+}

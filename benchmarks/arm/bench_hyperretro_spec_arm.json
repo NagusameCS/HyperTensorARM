@@ -1,0 +1,19 @@
+{
+  "config": {
+    "d_model": 512,
+    "k": 64,
+    "vocab": 2048,
+    "n_steps": 62,
+    "seed": 0
+  },
+  "geodesic": {
+    "acceptance": 0.016129032258064516,
+    "median_ms_per_propose": 1.0917710005742265,
+    "mean_jury_confidence": 1.0
+  },
+  "random_baseline": {
+    "acceptance": 0.0,
+    "median_ms_per_propose": 0.002458000381011516
+  },
+  "speedup_acceptance_ratio": Infinity
+}

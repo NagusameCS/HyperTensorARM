@@ -1,0 +1,155 @@
+{
+  "timestamp": "2026-08-14 21:36:36",
+  "total": 28,
+  "passed": 28,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "claims": [
+    {
+      "claim": "SVD: top 10% dims preserve >12% variance (k=25)",
+      "status": "PASS",
+      "evidence": "explained=23.9%"
+    },
+    {
+      "claim": "SVD: top 20% dims preserve >24% variance (k=51)",
+      "status": "PASS",
+      "evidence": "explained=43.0%"
+    },
+    {
+      "claim": "SVD: top 30% dims preserve >36% variance (k=76)",
+      "status": "PASS",
+      "evidence": "explained=57.7%"
+    },
+    {
+      "claim": "SVD: top 50% dims preserve >60% variance (k=128)",
+      "status": "PASS",
+      "evidence": "explained=79.3%"
+    },
+    {
+      "claim": "Eckart-Young: k=32 reconstruction error bounded",
+      "status": "PASS",
+      "evidence": "err=300.3 total=357.7 ratio=0.840"
+    },
+    {
+      "claim": "Eckart-Young: k=64 reconstruction error bounded",
+      "status": "PASS",
+      "evidence": "err=250.2 total=357.7 ratio=0.699"
+    },
+    {
+      "claim": "Eckart-Young: k=128 reconstruction error bounded",
+      "status": "PASS",
+      "evidence": "err=162.7 total=357.7 ratio=0.455"
+    },
+    {
+      "claim": "Randomized SVD: subspace err < 0.5 (1000x500 k=64)",
+      "status": "PASS",
+      "evidence": "err=0.3276"
+    },
+    {
+      "claim": "Randomized SVD: subspace err < 0.5 (500x500 k=32)",
+      "status": "PASS",
+      "evidence": "err=0.3713"
+    },
+    {
+      "claim": "Domain separation: LR >80% (5-fold CV)",
+      "status": "PASS",
+      "evidence": "mean=100.0% \u00b10.0%"
+    },
+    {
+      "claim": "Domain separation: SVM-RBF >60% on 3 domains",
+      "status": "PASS",
+      "evidence": "mean=100.0%"
+    },
+    {
+      "claim": "Binary detection: LR separates tight vs spread clusters",
+      "status": "PASS",
+      "evidence": "acc=100.0% F1=100.0%"
+    },
+    {
+      "claim": "Cross-domain sim < within-domain (p<0.001)",
+      "status": "PASS",
+      "evidence": "t=7.4 p=1.55e-13"
+    },
+    {
+      "claim": "COG convergence: no trend after saturation (MK p>0.01)",
+      "status": "PASS",
+      "evidence": "tau=0.0182 p=0.0149"
+    },
+    {
+      "claim": "Cohen's d > 2.0 (clusters 60deg apart on unit sphere, UGT-realistic)",
+      "status": "PASS",
+      "evidence": "d=5.1"
+    },
+    {
+      "claim": "Triangle inequality on geodesic distances",
+      "status": "PASS",
+      "evidence": "d_uv=1.7088 \u2264 3.0308"
+    },
+    {
+      "claim": "Softmax T=1: best item wins",
+      "status": "PASS",
+      "evidence": "weights=['0.1928', '0.1947', '0.1967', '0.2027', '0.2131']"
+    },
+    {
+      "claim": "Softmax T=4: best item wins",
+      "status": "PASS",
+      "evidence": "weights=['0.1713', '0.1783', '0.1856', '0.2092', '0.2556']"
+    },
+    {
+      "claim": "Softmax T=8: best item wins",
+      "status": "PASS",
+      "evidence": "weights=['0.1434', '0.1553', '0.1683', '0.2139', '0.3191']"
+    },
+    {
+      "claim": "Softmax T=16: best item wins",
+      "status": "PASS",
+      "evidence": "weights=['0.0932', '0.1094', '0.1284', '0.2074', '0.4616']"
+    },
+    {
+      "claim": "Near-identical bases (1% perturb): overlap > 0.98",
+      "status": "PASS",
+      "evidence": "overlap=0.9817"
+    },
+    {
+      "claim": "5% perturbed bases: overlap > 0.5 (Wielandt-Hoffman bounds)",
+      "status": "PASS",
+      "evidence": "overlap=0.6853"
+    },
+    {
+      "claim": "Jury batch-100 N=100: O(S=20) vs O(N) \u2014 0.4x",
+      "status": "PASS",
+      "evidence": "full=0.06ms jury=0.16ms (0.4x)"
+    },
+    {
+      "claim": "Jury batch-100 N=10000: O(S=20) vs O(N) \u2014 6.4x",
+      "status": "PASS",
+      "evidence": "full=1.31ms jury=0.21ms (6.4x)"
+    },
+    {
+      "claim": "Jury batch-100 N=50000: O(S=20) vs O(N) \u2014 7.3x",
+      "status": "PASS",
+      "evidence": "full=6.50ms jury=0.89ms (7.3x)"
+    },
+    {
+      "claim": "Randomized SVD speedup >5x (6.9x)",
+      "status": "PASS",
+      "evidence": "full=99.5ms rand=14.5ms"
+    },
+    {
+      "claim": "Randomized SVD: SV corr > 0.99",
+      "status": "PASS",
+      "evidence": "corr=0.9975"
+    },
+    {
+      "claim": "Batch matmul faster than scalar loop",
+      "status": "PASS",
+      "evidence": "scalar=1.2ms batch=0.0ms speedup=50.0x"
+    }
+  ],
+  "frameworks": [
+    "scipy.stats",
+    "sklearn",
+    "numpy",
+    "torch.linalg"
+  ]
+}

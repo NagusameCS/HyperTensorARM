@@ -1,0 +1,31 @@
+{
+  "rows": 4096,
+  "in_dim": 4096,
+  "iters": 20,
+  "backend": "cpu_opt",
+  "torch_available": true,
+  "results": {
+    "hyperretro_fused_q8": {
+      "median_ms": 0.5768124992755475,
+      "p95_ms": 0.7268645991644008,
+      "gb_per_s": 65.47209023284243
+    },
+    "baseline_two_q8_gemvs": {
+      "median_ms": 5.116500500662369,
+      "p95_ms": 5.281547597769531,
+      "gb_per_s": 7.384247103094959
+    },
+    "baseline_torch_matmul_fp32": {
+      "median_ms": 2.003646000957815,
+      "p95_ms": 2.2659180995106,
+      "gb_per_s": 66.99492422106064
+    }
+  },
+  "accuracy": {
+    "q8_vs_fp32_max_abs_err": 0.02793043851852417,
+    "ref_a_norm": 63.69034194946289,
+    "ref_b_norm": 62.73151779174805
+  },
+  "speedup_vs_two_separate_q8_gemvs": 8.870301019982197,
+  "fused_kernel": "fast"
+}

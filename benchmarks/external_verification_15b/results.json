@@ -1,0 +1,86 @@
+{
+  "timestamp": "2026-08-15 00:31:31",
+  "model": "Qwen2.5-1.5B-Instruct",
+  "total": 14,
+  "passed": 14,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "claims": [
+    {
+      "claim": "Domain separation on REAL 1.5B states: LR >80% (5-fold CV)",
+      "status": "PASS",
+      "evidence": "mean=90.0% \u00b112.2%"
+    },
+    {
+      "claim": "Bilateral UGT 1.5B: subspace overlap > 0.90 (actual: 0.9700)",
+      "status": "PASS",
+      "evidence": "overlap=0.9700, k=42"
+    },
+    {
+      "claim": "Jury N=1000K: O(S=20) faster than O(N) (16.0x)",
+      "status": "PASS",
+      "evidence": "full=44.60ms jury=2.795ms"
+    },
+    {
+      "claim": "COG convergence: no post-saturation trend (MK tau=0.025 p=0.037)",
+      "status": "PASS",
+      "evidence": "tau=0.0254 p=0.0373"
+    },
+    {
+      "claim": "COG: large effect size early vs late (d=6.2)",
+      "status": "PASS",
+      "evidence": "d=6.2"
+    },
+    {
+      "claim": "AGT: 1D subspace detected (k90=1)",
+      "status": "PASS",
+      "evidence": "k90=1, top SVs=['45.3', '0.1', '0.1', '0.1', '0.1']"
+    },
+    {
+      "claim": "TEH: off-critical >> critical (16x separation >10x)",
+      "status": "PASS",
+      "evidence": "crit=0.0639 off=0.9969 ratio=16x"
+    },
+    {
+      "claim": "Domains 0-1: cross < within sim (p=1.5e-02)",
+      "status": "PASS",
+      "evidence": "t=2.5 p=1.54e-02"
+    },
+    {
+      "claim": "Domains 0-2: cross < within sim (p=2.0e-02)",
+      "status": "PASS",
+      "evidence": "t=2.4 p=2.00e-02"
+    },
+    {
+      "claim": "Domains 0-3: cross < within sim (p=4.7e-04)",
+      "status": "PASS",
+      "evidence": "t=3.8 p=4.69e-04"
+    },
+    {
+      "claim": "Domains 1-2: cross < within sim (p=3.1e-03)",
+      "status": "PASS",
+      "evidence": "t=3.1 p=3.12e-03"
+    },
+    {
+      "claim": "Domains 1-3: cross < within sim (p=5.1e-05)",
+      "status": "PASS",
+      "evidence": "t=4.5 p=5.06e-05"
+    },
+    {
+      "claim": "Domains 2-3: cross < within sim (p=2.6e-04)",
+      "status": "PASS",
+      "evidence": "t=3.9 p=2.56e-04"
+    },
+    {
+      "claim": "Batched collection faster than serial (batch=20)",
+      "status": "PASS",
+      "evidence": "batch=1.3s serial\u22484.9s"
+    }
+  ],
+  "frameworks": [
+    "scipy.stats",
+    "sklearn",
+    "numpy",
+    "torch.linalg"
+  ]
+}

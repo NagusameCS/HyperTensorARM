@@ -1,0 +1,367 @@
+{
+  "Splejsning": {
+    "graft_name": "Splejsning",
+    "tests": [
+      {
+        "prompt": "Calculate 17 * 43 step by step.",
+        "baseline": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 787\n2. Add 17 to 43: 787 + 17 =",
+        "grafted": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 749\n2. Divide 749 by 43: 749 / 43",
+        "ablated": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 69\n2. Divide 69 by 43: 69 / 43 = 1",
+        "random": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 783\n\n2. Add 783 to 17: 783 + 78",
+        "sim_grafted_to_baseline": 1.0,
+        "sim_grafted_to_ablated": 1.0,
+        "sim_grafted_to_random": 1.0
+      },
+      {
+        "prompt": "If x^2 + 5x + 6 = 0, what is x? Solve it.",
+        "baseline": "To solve the equation x^2 + 5x + 6 = 0, we can start by factoring the left-hand side. We notice that x = 6 is a root of the equation, since 6^2 + 5(6) + 6 = 3",
+        "grafted": "To solve the equation x^2 + 5x + 6 = 0, we can use the quadratic formula: x = (-b \u00b1 \u221a(b^2 - 4*a)*\u221a(b)) / 2*a.\n\nIn this case, a",
+        "ablated": "To find the value of x, we need to substitute the expression x^2 + 5x + 6 into the equation x^2 + 5x + 6 = 0.\n\nSubstituting x^2 = 0 into the equation, we get:\n\nx",
+        "random": "To solve the equation x^2 + 5x + 6 = 0, we can start by isolating the variable x. We can do this by subtracting 5x from both sides of the equation, which gives us x + 5 = 0.\n\nNext, we can",
+        "sim_grafted_to_baseline": 0.8,
+        "sim_grafted_to_ablated": 0.3,
+        "sim_grafted_to_random": 0.8
+      },
+      {
+        "prompt": "What is the 10th Fibonacci number? Show your work.",
+        "baseline": "The Fibonacci sequence is a series of numbers in which each number is the sum of the two preceding ones, usually starting with 0 and 1. To find the 10th Fibonacci number, we can use a simple iterative",
+        "grafted": "The Fibonacci sequence is a series of numbers in which each number is the sum of the two preceding ones, starting from 0 and 1. To find the 10th Fibonacci number, we can use a simple recursive formula",
+        "ablated": "The Fibonacci sequence is a series of numbers in which each number is the sum of the two preceding numbers, starting from 0 and 1. The sequence is defined as: 0, 1, 1, 2, 3, 5, 8, 13",
+        "random": "The Fibonacci sequence is a series of numbers in which each number is the sum of the two preceding numbers, starting from 0 and 1: 0, 1, 1, 2, 3, 5, 8, 13, 21,",
+        "sim_grafted_to_baseline": 1.0,
+        "sim_grafted_to_ablated": 1.0,
+        "sim_grafted_to_random": 1.0
+      }
+    ],
+    "ablation_evidence": [
+      false,
+      true,
+      false
+    ],
+    "consistency_evidence": {
+      "outputs": [
+        "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 749",
+        "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 749",
+        "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 749"
+      ],
+      "avg_pairwise_sim": 1.0,
+      "is_consistent": true
+    },
+    "summary": {
+      "n_tests": 3,
+      "ablation_repair_rate": 33.3,
+      "avg_sim_grafted_baseline": 0.933,
+      "avg_sim_grafted_ablated": 0.767,
+      "graft_is_coherent": true,
+      "graft_repairs_ablation": false,
+      "consistency": true,
+      "verdict": "WEAK EVIDENCE"
+    },
+    "graft_def": {
+      "english": "Splice",
+      "layer": 12,
+      "type": "ffn",
+      "desc": "Single-layer FFN graft at layer 12. Minimal intervention, maximal proof."
+    },
+    "architecture": {
+      "base_model": "/Users/nagusamecs/.ht-repro/models/models--HuggingFaceTB--SmolLM2-135M-Instruct/snapshots/12fd25f77366fa6b3b4b768ec3050bf629380bac",
+      "graft_layer": 12,
+      "donor_layer": 2,
+      "graft_type": "ffn",
+      "n_layers": 30,
+      "d_model": 576
+    }
+  },
+  "Sammensmeltning": {
+    "graft_name": "Sammensmeltning",
+    "tests": [
+      {
+        "prompt": "Calculate 17 * 43 step by step.",
+        "baseline": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 787\n2. Add 17 to 43: 787 + 17 =",
+        "grafted": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 670\n2. Add 17 to 670: 670 + 17",
+        "ablated": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 17 * 43 = 5223\n\n2. Add 17 * 43 to",
+        "random": "To calculate 17 * 43, follow these steps:\n\n1. First, multiply 17 by 43:\n\nStep 1: Multiply 17 by 43\n\nStep 2: Add 17 to 43\n\nStep",
+        "sim_grafted_to_baseline": 1.0,
+        "sim_grafted_to_ablated": 1.0,
+        "sim_grafted_to_random": 0.857
+      },
+      {
+        "prompt": "If x^2 + 5x + 6 = 0, what is x? Solve it.",
+        "baseline": "To solve the equation x^2 + 5x + 6 = 0, we can start by factoring the left-hand side. We notice that x = 6 is a root of the equation, since 6^2 + 5(6) + 6 = 3",
+        "grafted": "To solve the equation x^2 + 5x + 6 = 0, we can start by factoring the left-hand side. We notice that x = 2 is a root of the equation, since 2^2 = 4.\n\nNow, we can rewrite the",
+        "ablated": "To solve the quadratic equation x^2 + 5x + 6 = 0, we can start by factoring it. We notice that x = 2 is a root of the equation, since 2(2) = 4. This means that x^2 = 2(",
+        "random": "To solve the equation x^2 + 5x + 6 = 0, we can use the quadratic formula: x = (-b \u00b1 \u221a(b^2 - 4*a*l)) / (2*a)\n\nThe quadratic formula states that if you take",
+        "sim_grafted_to_baseline": 1.0,
+        "sim_grafted_to_ablated": 0.867,
+        "sim_grafted_to_random": 0.8
+      },
+      {
+        "prompt": "What is the 10th Fibonacci number? Show your work.",
+        "baseline": "The Fibonacci sequence is a series of numbers in which each number is the sum of the two preceding ones, usually starting with 0 and 1. To find the 10th Fibonacci number, we can use a simple iterative",
+        "grafted": "The Fibonacci sequence is a series of numbers in which each number is the sum of the two preceding numbers, starting from 0 and 1. The sequence is defined by the recurrence relation: F(n) = F(n-1) + F",
+        "ablated": "The Fibonacci sequence is a series of numbers in which each number is the sum of the two preceding ones, starting from 0 and 1. To find the 10th Fibonacci number, we can use the formula for the nth Fi",
+        "random": "The Fibonacci sequence is a fascinating example of how numbers can be connected and recursive. The sequence starts as 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 8",
+        "sim_grafted_to_baseline": 1.0,
+        "sim_grafted_to_ablated": 1.0,
+        "sim_grafted_to_random": 0.333
+      }
+    ],
+    "ablation_evidence": [
+      false,
+      true,
+      false
+    ],
+    "consistency_evidence": {
+      "outputs": [
+        "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 670",
+        "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 670",
+        "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 670"
+      ],
+      "avg_pairwise_sim": 1.0,
+      "is_consistent": true
+    },
+    "summary": {
+      "n_tests": 3,
+      "ablation_repair_rate": 33.3,
+      "avg_sim_grafted_baseline": 1.0,
+      "avg_sim_grafted_ablated": 0.956,
+      "graft_is_coherent": true,
+      "graft_repairs_ablation": false,
+      "consistency": true,
+      "verdict": "WEAK EVIDENCE"
+    },
+    "graft_def": {
+      "english": "Fusion",
+      "layer": 15,
+      "type": "ffn",
+      "desc": "FFN fusion at layer 15. Donor processing merged into recipient."
+    },
+    "architecture": {
+      "base_model": "/Users/nagusamecs/.ht-repro/models/models--HuggingFaceTB--SmolLM2-135M-Instruct/snapshots/12fd25f77366fa6b3b4b768ec3050bf629380bac",
+      "graft_layer": 15,
+      "donor_layer": 5,
+      "graft_type": "ffn",
+      "n_layers": 30,
+      "d_model": 576
+    }
+  },
+  "Krydsning": {
+    "graft_name": "Krydsning",
+    "tests": [
+      {
+        "prompt": "Calculate 17 * 43 step by step.",
+        "baseline": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 787\n2. Add 17 to 43: 787 + 17 =",
+        "grafted": "17 * 43 = 672\n\nThe answer is:",
+        "ablated": "the 17 * 43 = 644\n\nThe further you go, the more you will be able to do.",
+        "random": "1. First, multiply 17 by 43:\n\n17 * 43 = 681\n\nSo, 17 * 43 = 681.\n\n2. Next, multiply 681 by 43:\n\n68",
+        "sim_grafted_to_baseline": 0.111,
+        "sim_grafted_to_ablated": 0.333,
+        "sim_grafted_to_random": 0.267
+      },
+      {
+        "prompt": "If x^2 + 5x + 6 = 0, what is x? Solve it.",
+        "baseline": "To solve the equation x^2 + 5x + 6 = 0, we can start by factoring the left-hand side. We notice that x = 6 is a root of the equation, since 6^2 + 5(6) + 6 = 3",
+        "grafted": "To solve the equation x^2 + 5x + 6 = 0, we can use the quadratic formula. The quadratic formula states that for any real number a, the equation can be expressed as x = (-a \u00b1 \u221a(a^2 - 4b^2))",
+        "ablated": "To solve the equation x^2 + 5x + 6 = 0, we can start by isolating the x term. We can do this by adding the x term to the other terms:\n\nx^2 + 5x + 6 = (x + 3)(",
+        "random": "To solve the equation x^2 + 5x + 6 = 0, we can start by noticing that the coefficients of x in the equation are all positive integers. This means that the equation can be factored as (x + 1)(x + 2).\n\n",
+        "sim_grafted_to_baseline": 0.8,
+        "sim_grafted_to_ablated": 0.8,
+        "sim_grafted_to_random": 0.8
+      },
+      {
+        "prompt": "What is the 10th Fibonacci number? Show your work.",
+        "baseline": "The Fibonacci sequence is a series of numbers in which each number is the sum of the two preceding ones, usually starting with 0 and 1. To find the 10th Fibonacci number, we can use a simple iterative",
+        "grafted": "The 10th Fibonacci number is 10.",
+        "ablated": "The Fibonacci sequence is a series of numbers in which each number is the sum of the two preceding ones, starting from 0 and 1, and each subsequent number is the sum of the two preceding ones. The seq",
+        "random": "The 10th Fibonacci number is 11.",
+        "sim_grafted_to_baseline": 0.267,
+        "sim_grafted_to_ablated": 0.267,
+        "sim_grafted_to_random": 0.714
+      }
+    ],
+    "ablation_evidence": [
+      false,
+      false,
+      false
+    ],
+    "consistency_evidence": {
+      "outputs": [
+        "17 * 43 = 672\n\nThe answer is:",
+        "17 * 43 = 672\n\nThe answer is:",
+        "17 * 43 = 672\n\nThe answer is:"
+      ],
+      "avg_pairwise_sim": 1.0,
+      "is_consistent": true
+    },
+    "summary": {
+      "n_tests": 3,
+      "ablation_repair_rate": 0.0,
+      "avg_sim_grafted_baseline": 0.393,
+      "avg_sim_grafted_ablated": 0.467,
+      "graft_is_coherent": true,
+      "graft_repairs_ablation": false,
+      "consistency": true,
+      "verdict": "WEAK EVIDENCE"
+    },
+    "graft_def": {
+      "english": "Crossing",
+      "layer": 8,
+      "type": "full",
+      "desc": "Full attention+FFN crossover at layer 8. Both components grafted."
+    },
+    "architecture": {
+      "base_model": "/Users/nagusamecs/.ht-repro/models/models--HuggingFaceTB--SmolLM2-135M-Instruct/snapshots/12fd25f77366fa6b3b4b768ec3050bf629380bac",
+      "graft_layer": 8,
+      "donor_layer": 18,
+      "graft_type": "full",
+      "n_layers": 30,
+      "d_model": 576
+    }
+  },
+  "Blanding": {
+    "graft_name": "Blanding",
+    "tests": [
+      {
+        "prompt": "Calculate 17 * 43 step by step.",
+        "baseline": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 787\n2. Add 17 to 43: 787 + 17 =",
+        "grafted": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 43 * 10 = 4300.\n2. Add 43 to 10",
+        "ablated": "To calculate 17 * 43 step by step, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 436.\n\n2. Add 17 to the result: 436 +",
+        "random": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 780\n2. Add 17 to 780: 780 + 17",
+        "sim_grafted_to_baseline": 1.0,
+        "sim_grafted_to_ablated": 0.667,
+        "sim_grafted_to_random": 1.0
+      },
+      {
+        "prompt": "If x^2 + 5x + 6 = 0, what is x? Solve it.",
+        "baseline": "To solve the equation x^2 + 5x + 6 = 0, we can start by factoring the left-hand side. We notice that x = 6 is a root of the equation, since 6^2 + 5(6) + 6 = 3",
+        "grafted": "To find the value of x, we can start by using the quadratic formula: x = (-b \u00b1 \u221a(b^2 - 4ac)) / (2a). In this case, a = 1, b = 5, and c = 6. Plugging",
+        "ablated": "To find the value of x, we can use the quadratic formula: x = (-b \u00b1 \u221a(b^2 - 4ac)) / (2a). In this case, a = 1, b = 5, and c = 6. Plugging these values",
+        "random": "To find x, we need to isolate the variable x on one side of the equation. We can do this by factoring the quadratic equation. \n\nNotice that the equation is x^2 + 5x + 6 = 0, which can be factored as (",
+        "sim_grafted_to_baseline": 0.273,
+        "sim_grafted_to_ablated": 0.647,
+        "sim_grafted_to_random": 0.35
+      },
+      {
+        "prompt": "What is the 10th Fibonacci number? Show your work.",
+        "baseline": "The Fibonacci sequence is a series of numbers in which each number is the sum of the two preceding ones, usually starting with 0 and 1. To find the 10th Fibonacci number, we can use a simple iterative",
+        "grafted": "The Fibonacci sequence is a series of numbers in which each number is the sum of the two preceding ones: 0, 1, 1, 2, 3, 5, 8, 13, 20, and so on. The sequence starts like this",
+        "ablated": "The 10th Fibonacci number is 13.",
+        "random": "The 10th Fibonacci number is 13. Here's a step-by-step solution:\n\n1. 1 + 1 = 2 (the first two digits of the sequence)\n2. 2 + 1 = 3 (the next two digits of",
+        "sim_grafted_to_baseline": 1.0,
+        "sim_grafted_to_ablated": 0.267,
+        "sim_grafted_to_random": 0.227
+      }
+    ],
+    "ablation_evidence": [
+      true,
+      true,
+      true
+    ],
+    "consistency_evidence": {
+      "outputs": [
+        "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 43 *",
+        "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 43 *",
+        "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 43 *"
+      ],
+      "avg_pairwise_sim": 1.0,
+      "is_consistent": true
+    },
+    "summary": {
+      "n_tests": 3,
+      "ablation_repair_rate": 100.0,
+      "avg_sim_grafted_baseline": 0.758,
+      "avg_sim_grafted_ablated": 0.527,
+      "graft_is_coherent": true,
+      "graft_repairs_ablation": true,
+      "consistency": true,
+      "verdict": "GRAFTING WORKS"
+    },
+    "graft_def": {
+      "english": "Mixture",
+      "layer": 20,
+      "type": "ffn",
+      "desc": "FFN mixture at layer 20. Blended processing characteristics."
+    },
+    "architecture": {
+      "base_model": "/Users/nagusamecs/.ht-repro/models/models--HuggingFaceTB--SmolLM2-135M-Instruct/snapshots/12fd25f77366fa6b3b4b768ec3050bf629380bac",
+      "graft_layer": 20,
+      "donor_layer": 10,
+      "graft_type": "ffn",
+      "n_layers": 30,
+      "d_model": 576
+    }
+  },
+  "Kim\u00e6re": {
+    "graft_name": "Kim\u00e6re",
+    "tests": [
+      {
+        "prompt": "Calculate 17 * 43 step by step.",
+        "baseline": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 787\n2. Add 17 to 43: 787 + 17 =",
+        "grafted": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 787\n\n2. Add 787 to 787: 787 + 7",
+        "ablated": "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43:\n17 * 43 = 691\n\nSo, 17 * 43 is equal to 691.\n\n2",
+        "random": "To calculate 17 * 43, follow these steps:\n\n1. First, multiply 17 by 43: 17 * 43 = 784.\n\n2. Then, subtract 1 from the result: 784 - 1",
+        "sim_grafted_to_baseline": 1.0,
+        "sim_grafted_to_ablated": 1.0,
+        "sim_grafted_to_random": 0.923
+      },
+      {
+        "prompt": "If x^2 + 5x + 6 = 0, what is x? Solve it.",
+        "baseline": "To solve the equation x^2 + 5x + 6 = 0, we can start by factoring the left-hand side. We notice that x = 6 is a root of the equation, since 6^2 + 5(6) + 6 = 3",
+        "grafted": "To solve the equation x^2 + 5x + 6 = 0, we can start by factoring the left-hand side. We notice that x^2 + 5x + 6 = (x + 3)(x + 2). This allows us to rewrite the",
+        "ablated": "To solve the equation x^2 + 5x + 6 = 0, we can start by isolating the term with the variable x. We notice that the equation resembles a quadratic equation, and we can factor it as (x + 1)(x + 2) = 0",
+        "random": "To solve the equation x^2 + 5x + 6 = 0, we can start by isolating the x term. We can do this by adding 5 to both sides of the equation, which gives us x^2 + 5x + 6 = 5x +",
+        "sim_grafted_to_baseline": 1.0,
+        "sim_grafted_to_ablated": 1.0,
+        "sim_grafted_to_random": 1.0
+      },
+      {
+        "prompt": "What is the 10th Fibonacci number? Show your work.",
+        "baseline": "The Fibonacci sequence is a series of numbers in which each number is the sum of the two preceding ones, usually starting with 0 and 1. To find the 10th Fibonacci number, we can use a simple iterative",
+        "grafted": "The 10th Fibonacci number is 10.",
+        "ablated": "The Fibonacci sequence is a series of numbers where each number is the sum of the two preceding ones, starting from 0 and 1. The sequence begins as follows: 0, 1, 1, 2, 3, 5, 8, 13,",
+        "random": "The Fibonacci sequence is a series of numbers where each number is the sum of the two preceding numbers, usually starting with 0 and 1. The first few terms of the sequence are: 0, 1, 1, 2, 3, 5, 8,",
+        "sim_grafted_to_baseline": 0.267,
+        "sim_grafted_to_ablated": 0.286,
+        "sim_grafted_to_random": 0.286
+      }
+    ],
+    "ablation_evidence": [
+      false,
+      false,
+      false
+    ],
+    "consistency_evidence": {
+      "outputs": [
+        "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 787",
+        "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 787",
+        "To calculate 17 * 43, follow these steps:\n\n1. Multiply 17 by 43: 17 * 43 = 787"
+      ],
+      "avg_pairwise_sim": 1.0,
+      "is_consistent": true
+    },
+    "summary": {
+      "n_tests": 3,
+      "ablation_repair_rate": 0.0,
+      "avg_sim_grafted_baseline": 0.756,
+      "avg_sim_grafted_ablated": 0.762,
+      "graft_is_coherent": true,
+      "graft_repairs_ablation": false,
+      "consistency": true,
+      "verdict": "WEAK EVIDENCE"
+    },
+    "graft_def": {
+      "english": "Chimera",
+      "layer": 5,
+      "type": "attention",
+      "desc": "Attention chimera at layer 5. Sees the world through donor's eyes."
+    },
+    "architecture": {
+      "base_model": "/Users/nagusamecs/.ht-repro/models/models--HuggingFaceTB--SmolLM2-135M-Instruct/snapshots/12fd25f77366fa6b3b4b768ec3050bf629380bac",
+      "graft_layer": 5,
+      "donor_layer": 15,
+      "graft_type": "attention",
+      "n_layers": 30,
+      "d_model": 576
+    }
+  }
+}

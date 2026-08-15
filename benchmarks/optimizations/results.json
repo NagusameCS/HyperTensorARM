@@ -1,0 +1,65 @@
+{
+  "Full SVD (2000\u00d71000, k=128)": {
+    "ms": 100.23781249983585
+  },
+  "Randomized SVD": {
+    "ms": 18.588766699758708,
+    "speedup": 5.392386386835281,
+    "subspace_preserved": 0.6476272940635681
+  },
+  "Full SVD (768\u00d7768 cov, k=32)": {
+    "ms": 38.87448329987819
+  },
+  "svd_lowrank (top-32)": {
+    "ms": 2.3078292000718648,
+    "speedup": 16.844610207145166
+  },
+  "Scalar cosine loop (1000 items)": {
+    "ms": 0.9810750001634007
+  },
+  "Batch matmul search": {
+    "ms": 0.10982089988829102,
+    "speedup": 8.93340886080284
+  },
+  "F.cosine_similarity + unsqueeze": {
+    "ms": 0.00625829998170957
+  },
+  "Fast dot product cosine": {
+    "ms": 0.008358299965038896,
+    "speedup": 0.7487527377441336
+  },
+  "List append + torch.stack (500)": {
+    "ms": 3.276266700049746
+  },
+  "Preallocated collector": {
+    "ms": 3.782579100152361,
+    "speedup": 0.866146249239779
+  },
+  "Full search (N=250)": {
+    "ms": 0.005783300002804026
+  },
+  "Jury-GTC routing": {
+    "ms": 0.06393750009010546,
+    "speedup": 0.09045239483329456
+  },
+  "SVD fp32 (baseline)": {
+    "ms": 14.26058329998341
+  },
+  "SVD fp16\u2192fp32 manual cast": {
+    "ms": 14.556308300234377
+  },
+  "fp16_safe_svd (auto)": {
+    "ms": 1.2873624997155275,
+    "overhead_vs_fp32": 0.0902741825235876
+  },
+  "torch.compile": {
+    "available": 0.0,
+    "note": "Disabled on Windows without C++ compiler; 1.3-2\u00d7 when available"
+  },
+  "Hidden state cache": {
+    "miss_ms": 0.013374999980442226,
+    "hit_ms": 0.004708999767899513,
+    "speedup_cache_hit": 2.840305933250927,
+    "stats": "{'hits': 2, 'misses': 0, 'hit_rate': 1.0, 'mem_entries': 1, 'mem_mb': 0.004096}"
+  }
+}

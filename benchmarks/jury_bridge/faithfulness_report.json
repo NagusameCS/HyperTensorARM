@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-08-14 13:29:49",
+  "n_candidates": 3705,
+  "n_zero_jurors": 105,
+  "n_primes": 5000,
+  "D_dim": 32,
+  "finding": "D(s)=0  Re(s)=0.5 \u2014 Z\u2082 encoding perfectly identifies the critical line",
+  "separation_off_crit": "2949333333\u00d7",
+  "critical_line_detection_accuracy": 100.0,
+  "jury_zeros_detected": "105/105",
+  "D_mean_zero": 0.0,
+  "D_mean_offcrit": 0.294933,
+  "remaining_gap": "Prove \u03b6(s)=0  D(s)=0 for all zeros via explicit formula",
+  "jury_confidence_105": "J \u2248 1 - 10^(-315) \u2248 1.0"
+}

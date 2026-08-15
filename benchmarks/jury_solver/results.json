@@ -1,0 +1,146 @@
+{
+  "timestamp": "2026-08-14 13:32:59",
+  "wins": 1,
+  "losses": 5,
+  "baseline_saiyans": {
+    "Gohan": 1.0,
+    "Goku": 1.0,
+    "Piccolo": 1.0,
+    "Trunks": 1.0,
+    "Vegeta": 1.0,
+    "Yamcha": 1.0
+  },
+  "fusion_results": {
+    "Trunks+Vegeta": {
+      "score": 1.0,
+      "delta_parent": 0.0,
+      "routing": 1.0,
+      "n_queries": 10
+    },
+    "Goku+Vegeta": {
+      "score": 1.0,
+      "delta_parent": 0.0,
+      "routing": 1.0,
+      "n_queries": 10
+    },
+    "Goku+Trunks": {
+      "score": 1.0,
+      "delta_parent": 0.0,
+      "routing": 1.0,
+      "n_queries": 10
+    }
+  },
+  "pruning_results": {
+    "Gohan": {
+      "baseline": 1.0,
+      "pruned": 1.0,
+      "delta": 0.0
+    },
+    "Goku": {
+      "baseline": 1.0,
+      "pruned": 1.0,
+      "delta": 0.0
+    },
+    "Piccolo": {
+      "baseline": 1.0,
+      "pruned": 1.0,
+      "delta": 0.0
+    },
+    "Trunks": {
+      "baseline": 1.0,
+      "pruned": 1.0,
+      "delta": 0.0
+    },
+    "Vegeta": {
+      "baseline": 1.0,
+      "pruned": 1.0,
+      "delta": 0.0
+    },
+    "Yamcha": {
+      "baseline": 1.0,
+      "pruned": 1.0,
+      "delta": 0.0
+    }
+  },
+  "piccolo": {
+    "baseline": 1.0,
+    "augmented": 1.0,
+    "delta": 0.0
+  },
+  "temperature": {
+    "best_Ts": {
+      "Gohan": 1,
+      "Goku": 1,
+      "Piccolo": 1,
+      "Trunks": 1,
+      "Vegeta": 1,
+      "Yamcha": 1
+    },
+    "fixed_acc": 1.0,
+    "per_domain_acc": 1.0
+  },
+  "improvement_loop": {
+    "iter1": 1.0,
+    "iter2": 1.0,
+    "iter3": 1.0,
+    "parent_avg": 1.0
+  },
+  "results_tracker": [
+    {
+      "experiment": "A_fusion_ranking",
+      "prediction": "Trunks+Vegeta > Goku+Vegeta",
+      "outcome": "REFUTED",
+      "tv_vs_parent": 0.0,
+      "gv_vs_parent": 0.0
+    },
+    {
+      "experiment": "B_trajectory_pruning",
+      "total_delta": 0.0,
+      "per_saiyan": {
+        "Gohan": 0.0,
+        "Goku": 0.0,
+        "Piccolo": 0.0,
+        "Trunks": 0.0,
+        "Vegeta": 0.0,
+        "Yamcha": 0.0
+      }
+    },
+    {
+      "experiment": "C_piccolo_augmentation",
+      "self_delta": 0.0,
+      "cross_delta": 0.12055555555555564,
+      "n_original": 60,
+      "n_augmented": 100
+    },
+    {
+      "experiment": "D_temperature_calibration",
+      "fixed_T8_acc": 1.0,
+      "per_domain_acc": 1.0,
+      "improvement": 0,
+      "best_Ts": {
+        "Gohan": 1,
+        "Goku": 1,
+        "Piccolo": 1,
+        "Trunks": 1,
+        "Vegeta": 1,
+        "Yamcha": 1
+      }
+    },
+    {
+      "experiment": "E_asymmetric_routing",
+      "strongest_asymmetry": "Gohan\u2192Piccolo",
+      "ratio": 0.007111281387403925
+    },
+    {
+      "experiment": "F_improvement_loop",
+      "iter1_naive": 1.0,
+      "iter2_per_T": 1.0,
+      "iter3_pruned_per_T": 1.0,
+      "parent_avg": 1.0,
+      "iter1_delta": 0.0,
+      "iter2_delta": 0.0,
+      "iter3_delta": 0.0,
+      "traj_reduction": 0
+    }
+  ]
+}
