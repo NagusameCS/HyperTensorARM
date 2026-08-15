@@ -117,6 +117,10 @@ Decode throughput: fp16 37.7 tok/s, Q8_0 108.7, Q4_K_M 109.2 (0.5B).
   and raises. `write_tensor_data` already handles alignment padding.
 - llama-quantize refuses to requantize legacy types (Q4_0/Q5_0/Q8_0) even with
   `--allow-requantize`; it can only requantize k-quants/i-quants.
+- Sink-aware GRC (`--sink`) currently applies to the GGUF/generic path
+  (dense projection + sink restore). The HF factored path (`factor_attn_state_dict`)
+  uses shared-basis factoring without sink restore — extending it needs the
+  rank-k+T trick (append sink columns to A/B).
 
 ## Definition of done for a change
 
