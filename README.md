@@ -19,6 +19,8 @@ matrix.
 | Jury scaling | ✅ 547× @128 jurors (claim: 53×) |
 | HyperRetro fused dual-Q8 GEMV (NEON SDOT) | ✅ 8.87× vs two Q8 GEMVs (claim: 2.3×) |
 | CECI grafting (ht-graft) | ✅ 5 grafts built, "GRAFTING WORKS" |
+| Unified memory: Qwen2.5-1.5B Q4_K_M (1.07 GB) | ✅ 26.5 tok/s decode, PPL 16.68, oracle parity |
+| i8mm (SMMLA) int8 matrix ops in hyperretro kernel | ✅ 2× MAC rate over SDOT on M-series |
 
 ## Build the C runtime
 

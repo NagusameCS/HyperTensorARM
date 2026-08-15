@@ -36,7 +36,12 @@ comparison.
   1.9696). The x-quantized SDOT path is *closer* to llama.cpp because
   llama.cpp itself quantizes activations.
 - **Unified memory**: no PCIe copies — the entire GGUF is mmap'd and streamed
-  from one pool; enables 1.5B+ models without VRAM limits.
+  from one pool; enables 1.5B+ models without VRAM limits. Verified:
+  Qwen2.5-1.5B Q4_K_M (1.07 GB) runs at **26.5 tok/s decode**, ppl-eval 16.68,
+  with oracle parity (NLL 1.7900 vs llama.cpp 1.7995).
+- **i8mm (SMMLA)**: Apple M-series implements ARMv8.6 int8 matrix multiply —
+  the hyperretro fused kernel now uses `vmmlaq_s32` (8 MACs/lane vs SDOT's 4)
+  when `__ARM_FEATURE_I8MM` is available.
 - **MPS**: used by AGT/ACM/audit suites (live MPS matmul checks).
 - Toggle with `HT_NEON_FAST=0`; profile GEMVs with `GD_GEMV_PROF=1`.
 
