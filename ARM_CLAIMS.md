@@ -21,7 +21,7 @@ comparison.
 | 8 | HyperRetro fused dual-Q8 GEMV ~2.3× over two separate Q8 GEMVs | **12.78×** via NEON SDOT + SMMLA + GCD 8-core row parallelism (`outputs/bench_hyperretro_kernel_arm.json`) | ✅ BEAT ~5.5× |
 | 9 | GRC attention compression: 106% throughput at k=1024 (L2 cache residency) | GRC code paths build on ARM; standalone 106% number was measured on an NVIDIA L2 — needs GPU bench | ⏳ T3 |
 | 10 | CECI grafting: 7 published chimeras, 5/7 improve MMLU | Pipeline works end-to-end on ARM: 5 Danish grafts built, Blanding = "GRAFTING WORKS" 100% repair (`benchmarks/arm/graft_proof_arm.json`) | ✅ MET (pipeline), ⏳ (MMLU sweep) |
-| 11 | HyperRetro compression: fp16 2.33 tok/s → int4 FFN-only+AWQ 6.04 tok/s (2.38×), 2955→1242 MB | GRC rank-1024 compression of all 28 layers runs on ARM; output is a standard HF checkpoint (safetensors) that **loads and runs with plain AutoModelForCausalLM** — PPL 14.58 vs baseline 12.94 (`benchmarks/arm/bench_hyperretro_compress_arm.json`). Throughput table needs the quantized-FFN variant | ✅ MET (pipeline + loadability), ⏳ (tok/s table) |
+| 11 | HyperRetro compression: fp16 2.33 tok/s → int4 FFN-only+AWQ 6.04 tok/s (2.38×), 2955→1242 MB | GRC rank-1024 compression of all 28 layers runs on ARM; output is a standard HF checkpoint that loads/runs (PPL 14.58 vs 12.94). **Full E2E: 0.5B Q4_K_M GGUF → ffn_rank=256+int4 → exported GGUF runs on geodessical (9.1 tok/s, coherent)**. Throughput table needs the AWQ-calibrated variant | ✅ MET (pipeline + loadability + E2E), ⏳ (tok/s table) |
 | 12 | ACM learns the ζ involution in latent space | Runs on ARM/MPS: ι²≈id err 0.0036, TEH detection 15/15, 0 false positives (`benchmarks/acm_prototype/`) | ✅ MET |
 | 13 | Bridge protocol: 105 known zeros, jury confidence J ≈ 1 − 10⁻³¹⁵ | 105/105 zeros detected, J ≈ 1−10⁻³¹⁵ (`benchmarks/jury_bridge/faithfulness_report.json`) | ✅ MET |
 | 14 | Papers 15/18 at 100% | Riemann T1 suite re-runs on ARM (4 smoke + comprehensive artifacts carried over); content claims unchanged | ✅ MET (carry-over) |
@@ -85,7 +85,21 @@ clang -O3 -shared -fPIC -march=armv8.4-a+dotprod \
 
 ## T2/T3 queue (require large HF downloads or server hardware)
 
-- COG 10K (Qwen2.5-1.5B, CPU hours) — `scripts/cog_10k.py --n 10000`
+- COG 10K — running on ARM (1K verified: 27 trajectories, metric saturating)
 - Bilateral UGT 1.5B (Qwen2.5-1.5B) — `scripts/ugt_scale_15b.py`
-- HyperRetro 3-way compression bench (Qwen2.5-1.5B) — `hyperretro/bench/run.py compress`
 - 7B UGT / GRC 106% L2 (needs 24 GB+ NVIDIA GPU)
+
+## civilized-HyperTensor integration
+
+The private `civilized-HyperTensor-priv` repo is now cloned into the workspace
+(`civilized-HyperTensor/`, gitignored mirror). Its commercial additions were
+imported and verified on ARM:
+
+- `hyperretro/models/` — unified model layer: GGUF adapter (llama.cpp files),
+  HF backend, OpenMythos backend, `compress_model` / `export_model`
+  (safetensors + GGUF with tokenizer preservation). Fixed for ARM: GGUF
+  registry contract, `gguf.dequantize` tensor shapes, vocab extraction,
+  tokenizer KV copy, int4 reconstruction keys.
+- Civilized tests: `test_hf_compress`, `test_ffn_compress`, `test_models` —
+  all pass on ARM.
+- `CHANGELOG-commercial.md` imported.

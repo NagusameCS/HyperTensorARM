@@ -21,6 +21,8 @@ matrix.
 | CECI grafting (ht-graft) | ✅ 5 grafts built, "GRAFTING WORKS" |
 | External verification on real 1.5B model (claim: 14/14) | ✅ **14/14 PASS** (UGT overlap 0.970 vs 0.968 claim) |
 | HyperRetro GRC compression (rank 1024, all 28 layers) | ✅ Compressed HF checkpoint loads + runs: PPL 14.58 vs 12.94 baseline |
+| E2E: GGUF → compress (FFN+int4) → GGUF → ARM runtime | ✅ Compressed GGUF runs on geodessical |
+| civilized-HyperTensor models module | ✅ Imported, fixed for ARM, tests pass |
 | Unified memory: Qwen2.5-1.5B Q4_K_M (1.07 GB) | ✅ 32.8 tok/s decode, PPL 16.68, oracle parity |
 | i8mm (SMMLA) + GCD parallel hyperretro kernel | ✅ 12.78× vs two Q8 GEMVs (claim 2.3×) |
 
