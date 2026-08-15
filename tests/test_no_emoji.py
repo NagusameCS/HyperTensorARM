@@ -11,10 +11,15 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 TRACKED_FILES = [
     "README.md",
     "ARM_CLAIMS.md",
+    "AGENTS.md",
+    ".github/copilot-instructions.md",
+    "docs/E2E_PIPELINE.md",
+    "Makefile",
     "hyperretro/models/_export.py",
     "hyperretro/models/_stream.py",
     "hyperretro/models/__init__.py",
     "hyperretro/models/_compress.py",
+    "hyperretro/models/e2e_cli.py",
     "scripts/e2e.py",
 ]
 

@@ -152,10 +152,12 @@ setup(
             "hyperretro=hyperretro.cli:main",
             "ht-repro=ht_repro.cli:main",
             "ht-graft=ht_repro.graft_wrapper:main",
+            "hyperarm=hyperretro.models.e2e_cli:main",
         ],
     },
     install_requires=[
         "numpy>=1.24",
+        "gguf>=0.17",
     ],
     extras_require={
         "torch": ["torch>=2.0"],

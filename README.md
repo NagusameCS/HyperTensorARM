@@ -6,6 +6,11 @@ and includes an ARM-native C runtime, ARM NEON kernels, and ARM-verified
 claim evidence. See [`ARM_CLAIMS.md`](ARM_CLAIMS.md) for the claim-parity
 matrix.
 
+> **For AI coding agents**: read [`AGENTS.md`](AGENTS.md) first — it has the
+> repo map, the commands that must keep working, the oracle-verification
+> protocol, and the pitfalls. A `Makefile` exposes `build`, `test`, `pytest`,
+> `infer`, `ppl`, `compress`, `stream`, `verify`, `quantize`.
+
 ## What runs on ARM today
 
 | Layer | Status |
