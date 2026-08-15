@@ -1,0 +1,243 @@
+{
+  "source": "/Users/nagusamecs/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+  "out_dir": "outputs/compressed_15b",
+  "config": {
+    "rank_k": 1024,
+    "sink_T": 0,
+    "layers": [],
+    "dtype": "float32",
+    "grc_source": "hyperretro.hf.compress (vendored)"
+  },
+  "per_layer": {
+    "layer_0": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.27554476261138916,
+      "frob_relerr_k": 0.2594858407974243,
+      "frob_relerr_v": 0.5040285587310791
+    },
+    "layer_1": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.1570010632276535,
+      "frob_relerr_k": 0.10281693190336227,
+      "frob_relerr_v": 0.2970784306526184
+    },
+    "layer_2": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.15648403763771057,
+      "frob_relerr_k": 0.11870802938938141,
+      "frob_relerr_v": 0.22803658246994019
+    },
+    "layer_3": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.16504526138305664,
+      "frob_relerr_k": 0.13814708590507507,
+      "frob_relerr_v": 0.21340492367744446
+    },
+    "layer_4": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.16305938363075256,
+      "frob_relerr_k": 0.1463879644870758,
+      "frob_relerr_v": 0.1829439252614975
+    },
+    "layer_5": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.14173880219459534,
+      "frob_relerr_k": 0.13288022577762604,
+      "frob_relerr_v": 0.1226615235209465
+    },
+    "layer_6": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.12934258580207825,
+      "frob_relerr_k": 0.11911720782518387,
+      "frob_relerr_v": 0.15284010767936707
+    },
+    "layer_7": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.137648344039917,
+      "frob_relerr_k": 0.12952682375907898,
+      "frob_relerr_v": 0.15366899967193604
+    },
+    "layer_8": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.1338292956352234,
+      "frob_relerr_k": 0.12215954810380936,
+      "frob_relerr_v": 0.15085582435131073
+    },
+    "layer_9": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.12664943933486938,
+      "frob_relerr_k": 0.117272287607193,
+      "frob_relerr_v": 0.15021267533302307
+    },
+    "layer_10": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.14740028977394104,
+      "frob_relerr_k": 0.13751839101314545,
+      "frob_relerr_v": 0.1394347995519638
+    },
+    "layer_11": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.1358266919851303,
+      "frob_relerr_k": 0.12332440912723541,
+      "frob_relerr_v": 0.14014682173728943
+    },
+    "layer_12": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.12165598571300507,
+      "frob_relerr_k": 0.10986628383398056,
+      "frob_relerr_v": 0.1485646516084671
+    },
+    "layer_13": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.14344939589500427,
+      "frob_relerr_k": 0.12215348333120346,
+      "frob_relerr_v": 0.17114590108394623
+    },
+    "layer_14": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.12589189410209656,
+      "frob_relerr_k": 0.11340245604515076,
+      "frob_relerr_v": 0.1414465308189392
+    },
+    "layer_15": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.2341075837612152,
+      "frob_relerr_k": 0.23231303691864014,
+      "frob_relerr_v": 0.30837342143058777
+    },
+    "layer_16": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.13168860971927643,
+      "frob_relerr_k": 0.12119294703006744,
+      "frob_relerr_v": 0.13408417999744415
+    },
+    "layer_17": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.13225550949573517,
+      "frob_relerr_k": 0.1565064638853073,
+      "frob_relerr_v": 0.09716245532035828
+    },
+    "layer_18": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.13472653925418854,
+      "frob_relerr_k": 0.12858137488365173,
+      "frob_relerr_v": 0.1208614930510521
+    },
+    "layer_19": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.14105966687202454,
+      "frob_relerr_k": 0.1522815078496933,
+      "frob_relerr_v": 0.1075860857963562
+    },
+    "layer_20": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.13601963222026825,
+      "frob_relerr_k": 0.14746814966201782,
+      "frob_relerr_v": 0.06775151938199997
+    },
+    "layer_21": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.13924826681613922,
+      "frob_relerr_k": 0.16156648099422455,
+      "frob_relerr_v": 0.08128131926059723
+    },
+    "layer_22": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.1525486409664154,
+      "frob_relerr_k": 0.16238762438297272,
+      "frob_relerr_v": 0.10758841782808304
+    },
+    "layer_23": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.14150625467300415,
+      "frob_relerr_k": 0.17446063458919525,
+      "frob_relerr_v": 0.08670513331890106
+    },
+    "layer_24": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.16213324666023254,
+      "frob_relerr_k": 0.18925023078918457,
+      "frob_relerr_v": 0.071098692715168
+    },
+    "layer_25": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.15404532849788666,
+      "frob_relerr_k": 0.21636104583740234,
+      "frob_relerr_v": 0.11938001215457916
+    },
+    "layer_26": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.1377042680978775,
+      "frob_relerr_k": 0.17832544445991516,
+      "frob_relerr_v": 0.04050888121128082
+    },
+    "layer_27": {
+      "rank_k": 1024,
+      "sink_T": 0,
+      "d": 1536,
+      "frob_relerr_q": 0.1427609920501709,
+      "frob_relerr_k": 0.1966206431388855,
+      "frob_relerr_v": 0.04700798913836479
+    }
+  },
+  "n_layers_compressed": 28,
+  "ffn": null,
+  "ppl": {
+    "baseline": 12.94291877746582,
+    "hyperretro": 14.583303451538086
+  }
+}

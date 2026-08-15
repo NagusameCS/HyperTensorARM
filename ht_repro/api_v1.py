@@ -208,9 +208,13 @@ def infer(body: dict) -> tuple[int, dict]:
                 from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore
                 tok = AutoTokenizer.from_pretrained(path)
                 mdl = AutoModelForCausalLM.from_pretrained(
-                    path, torch_dtype=torch.float16 if gpu.backend() != "cpu" else torch.float32)
-                mdl.to(gpu.device())
-                inp = tok(prompt, return_tensors="pt").to(gpu.device())
+                    path, torch_dtype=torch.float16 if gpu.backend()
+                    not in ("cpu", "mps") else torch.float32)
+                dev = gpu.device()
+                if dev == "mps":
+                    dev = "cpu"
+                mdl.to(dev)
+                inp = tok(prompt, return_tensors="pt").to(dev)
                 out = mdl.generate(**inp, max_new_tokens=int(body.get("max_new_tokens", 64)))
                 text = tok.decode(out[0], skip_special_tokens=True)
             except Exception as inner:

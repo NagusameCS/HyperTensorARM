@@ -14,12 +14,13 @@ matrix.
 | Apple ARM NEON dotprod (SDOT) GEMV kernels (Q5_0/Q8_0/Q4_K/Q6_K, SMP split) | ✅ **4.9 → 88.5 tok/s decode** (~18×), parity kept |
 | C tests (kernels, model_meta, chat, tokenizer) | ✅ All pass |
 | Python suites (pytest: 108/108, audit 33/33, external verification 28/28) | ✅ Pass |
-| ht-repro REST + SQLite | ✅ Pass |
+| ht-repro REST + SQLite | ✅ Pass — `/health`, `/gpu`, `/sort`, `/jobs`, and real `/infer` (gpt2 generation on ARM) |
 | AGT 50K primes (Riemann) | ✅ 100%, k90=k95=1, 676× separation |
 | Jury scaling | ✅ 547× @128 jurors (claim: 53×) |
 | HyperRetro fused dual-Q8 GEMV (NEON SDOT) | ✅ 8.87× vs two Q8 GEMVs (claim: 2.3×) |
 | CECI grafting (ht-graft) | ✅ 5 grafts built, "GRAFTING WORKS" |
 | External verification on real 1.5B model (claim: 14/14) | ✅ **14/14 PASS** (UGT overlap 0.970 vs 0.968 claim) |
+| HyperRetro GRC compression (rank 1024, all 28 layers) | ✅ Compressed HF checkpoint loads + runs: PPL 14.58 vs 12.94 baseline |
 | Unified memory: Qwen2.5-1.5B Q4_K_M (1.07 GB) | ✅ 32.8 tok/s decode, PPL 16.68, oracle parity |
 | i8mm (SMMLA) + GCD parallel hyperretro kernel | ✅ 12.78× vs two Q8 GEMVs (claim 2.3×) |
 

@@ -10,7 +10,7 @@ comparison.
 | # | Original claim | ARM result | Verdict |
 |---|---|---|---|
 | 1 | AGT at 50K primes + 1K zeta zeros: 100% detection, k90=k95=1, 800× separation | 100% detection, k90=k95=1, **676× separation**, 0/30 false positives (`benchmarks/agt_10k/results.json`) | ✅ MET |
-| 2 | COG 10K interactions: 14 trajectories, metric saturates, Mann-Kendall p=0.015 | Pending (requires Qwen2.5-1.5B download + hours-long CPU run) | ⏳ T2 |
+| 2 | COG 10K interactions: 14 trajectories, metric saturates, Mann-Kendall p=0.015 | Pending (hours-long CPU run on Qwen2.5-1.5B — model now available) | ⏳ T2 |
 | 3 | Bilateral UGT 1.5B: subspace overlap 0.968 | Pending (requires Qwen2.5-1.5B, ~3 GB) | ⏳ T2 |
 | 4 | 7B bilateral UGT: principal angles 0.01–0.11° (L40S, 4-bit) | Requires 7B model + 24 GB+ VRAM — not runnable on this laptop | ⏳ T3 |
 | 5 | Jury scaling at N=1M: 53× faster than O(N) full scan | **547× at 128 jurors, 326× at 512 jurors** (`scripts/jury_scaling.py`) | ✅ BEAT 10× |
@@ -21,7 +21,7 @@ comparison.
 | 8 | HyperRetro fused dual-Q8 GEMV ~2.3× over two separate Q8 GEMVs | **12.78×** via NEON SDOT + SMMLA + GCD 8-core row parallelism (`outputs/bench_hyperretro_kernel_arm.json`) | ✅ BEAT ~5.5× |
 | 9 | GRC attention compression: 106% throughput at k=1024 (L2 cache residency) | GRC code paths build on ARM; standalone 106% number was measured on an NVIDIA L2 — needs GPU bench | ⏳ T3 |
 | 10 | CECI grafting: 7 published chimeras, 5/7 improve MMLU | Pipeline works end-to-end on ARM: 5 Danish grafts built, Blanding = "GRAFTING WORKS" 100% repair (`benchmarks/arm/graft_proof_arm.json`) | ✅ MET (pipeline), ⏳ (MMLU sweep) |
-| 11 | HyperRetro compression: fp16 2.33 tok/s → int4 FFN-only+AWQ 6.04 tok/s (2.38×), 2955→1242 MB | Pending (requires Qwen2.5-1.5B) | ⏳ T2 |
+| 11 | HyperRetro compression: fp16 2.33 tok/s → int4 FFN-only+AWQ 6.04 tok/s (2.38×), 2955→1242 MB | GRC rank-1024 compression of all 28 layers runs on ARM; output is a standard HF checkpoint (safetensors) that **loads and runs with plain AutoModelForCausalLM** — PPL 14.58 vs baseline 12.94 (`benchmarks/arm/bench_hyperretro_compress_arm.json`). Throughput table needs the quantized-FFN variant | ✅ MET (pipeline + loadability), ⏳ (tok/s table) |
 | 12 | ACM learns the ζ involution in latent space | Runs on ARM/MPS: ι²≈id err 0.0036, TEH detection 15/15, 0 false positives (`benchmarks/acm_prototype/`) | ✅ MET |
 | 13 | Bridge protocol: 105 known zeros, jury confidence J ≈ 1 − 10⁻³¹⁵ | 105/105 zeros detected, J ≈ 1−10⁻³¹⁵ (`benchmarks/jury_bridge/faithfulness_report.json`) | ✅ MET |
 | 14 | Papers 15/18 at 100% | Riemann T1 suite re-runs on ARM (4 smoke + comprehensive artifacts carried over); content claims unchanged | ✅ MET (carry-over) |
