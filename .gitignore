@@ -82,3 +82,6 @@ outputs/
 benchmarks/optimizations/
 .gdbinit
 civilized-HyperTensor/
+!hyperretro/models/
+!hyperretro/models/**
+!hyperretro/models/__pycache__/
