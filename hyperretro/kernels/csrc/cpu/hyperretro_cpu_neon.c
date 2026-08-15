@@ -21,6 +21,10 @@
 #include <stdlib.h>
 #include <math.h>
 
+#if defined(__APPLE__)
+#include <dispatch/dispatch.h>
+#endif
+
 #if defined(__aarch64__)
 #include <arm_neon.h>
 #endif
@@ -213,8 +217,42 @@ gemv_dual_q8_0_avx2(
                         scales_b, codes_b, out_a, out_b);
 }
 
+#if defined(__aarch64__) && defined(__ARM_FEATURE_DOTPROD)
+/* Row-chunk worker for the parallel fused kernel (Apple GCD). */
+typedef struct {
+    const int8_t *xq;
+    const float  *xs;
+    int n_blocks;
+    const float  *scales_a;
+    const int8_t *codes_a;
+    const float  *scales_b;
+    const int8_t *codes_b;
+    float *out_a;
+    float *out_b;
+    int stride;
+    int rows;
+    int n_chunks;
+} gemv_fast_ctx_t;
+
+static void gemv_dual_q8_0_rows_worker(void *arg, size_t idx)
+{
+    const gemv_fast_ctx_t *c = (const gemv_fast_ctx_t *)arg;
+    int start = (int)((size_t)c->rows * idx / (size_t)c->n_chunks);
+    int end   = (int)((size_t)c->rows * (idx + 1) / (size_t)c->n_chunks);
+    for (int r = start; r < end; r++) {
+        gemv_dual_q8_0_row_neon_sdot(
+            c->xq, c->xs, c->n_blocks,
+            c->scales_a + (size_t)r * c->n_blocks,
+            c->codes_a  + (size_t)r * c->stride,
+            c->scales_b + (size_t)r * c->n_blocks,
+            c->codes_b  + (size_t)r * c->stride,
+            c->out_a + r, c->out_b + r);
+    }
+}
+#endif /* __aarch64__ && __ARM_FEATURE_DOTPROD */
+
 /* --------------------------------------------------------------------------
-   Fast fused dual Q8_0 GEMV (SDOT).  Quantizes x per 32-element block and
+   Fast fused dual Q8_0 GEMV (SDOT/SMMLA).  Quantizes x per 32-element block and
    uses integer dot products; same output contract as gemv_dual_q8_0_neon
    with ~1e-3 relative accuracy (still Q8-class).
    -------------------------------------------------------------------------- */
@@ -257,17 +295,27 @@ gemv_dual_q8_0_neon_fast(
         }
     }
 
-    for (int r = 0; r < rows; ++r) {
-        gemv_dual_q8_0_row_neon_sdot(
-            xq, xs, n_blocks,
-            scales_a, codes_a,
-            scales_b, codes_b,
-            out_a + r, out_b + r);
-        scales_a += n_blocks;
-        codes_a += stride;
-        scales_b += n_blocks;
-        codes_b += stride;
+    gemv_fast_ctx_t ctx = {
+        .xq = xq, .xs = xs, .n_blocks = n_blocks,
+        .scales_a = scales_a, .codes_a = codes_a,
+        .scales_b = scales_b, .codes_b = codes_b,
+        .out_a = out_a, .out_b = out_b,
+        .stride = stride, .rows = rows, .n_chunks = 8,
+    };
+#if defined(__APPLE__)
+    if (rows >= 512) {
+        /* Apple unified memory: all cores stream the mmap'd weight rows in
+         * parallel — ~4-6x over the single-core bandwidth-limited kernel. */
+        dispatch_apply_f((size_t)ctx.n_chunks, DISPATCH_APPLY_AUTO, &ctx,
+                         gemv_dual_q8_0_rows_worker);
+    } else {
+        ctx.n_chunks = 1;
+        gemv_dual_q8_0_rows_worker(&ctx, 0);
     }
+#else
+    ctx.n_chunks = 1;
+    gemv_dual_q8_0_rows_worker(&ctx, 0);
+#endif
 
     free(xq);
     free(xs);
