@@ -15,6 +15,7 @@ CFLAGS=(
     -O2
     -DGEODESSICAL_HOSTED=1
     -DHT_ARM64=1
+    -DHT_DEBUG_FWD
     -Ihost/shims
     -I.
     -Ihost

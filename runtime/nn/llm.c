@@ -194,6 +194,7 @@ static inline v8f v8f_expf(v8f v) {
 
 /* Forward declarations */
 static void llm_build_hash_table(const llm_model_t *m);
+static void llm_build_merge_table(llm_model_t *m);
 static uint64_t llm_row_bytes(int in_dim, ggml_type_t type);
 
 /* CUDA fused kernel wrappers (defined in backend_cuda.c) */
@@ -8102,12 +8103,30 @@ static void llm_forward_token(llm_model_t *m, float *logits, int token_id, int p
             }
         }
 
-        /* Add bias if present (Phi-2) */
+        /* Add bias if present. Note: some archs (qwen2.5-instruct) carry real
+         * trained QKV biases even though their config doesn't declare them —
+         * mirror llama.cpp, which adds biases whenever the tensor exists. */
+#ifdef HT_DEBUG_FWD
+        if (L == 0 && pos < 2 && getenv("HT_DEBUG_FWD")) {
+            kprintf("[DBG3] pre-bias k=%.4f %.4f %.4f %.4f xn=%.4f %.4f %.4f %.4f %.4f\n",
+                llm_k_buf[0], llm_k_buf[1], llm_k_buf[2], llm_k_buf[3],
+                llm_xn[0], llm_xn[1], llm_xn[2], llm_xn[3], llm_xn[4]);
+        }
+#endif
         llm_add_bias(llm_q,     layer->q_bias, lq_dim);
         if (has_own_kv) {
             llm_add_bias(llm_k_buf, layer->k_bias, lkv_dim);
             llm_add_bias(llm_v_buf, layer->v_bias, lkv_dim);
         }
+
+#ifdef HT_DEBUG_FWD
+        if (L == 0 && pos < 2 && getenv("HT_DEBUG_FWD")) {
+            kprintf("[DBG2] q_pre=%.4f %.4f %.4f %.4f k_pre=%.4f %.4f %.4f %.4f v_pre=%.4f %.4f\n",
+                llm_q[0], llm_q[1], llm_q[2], llm_q[3],
+                llm_k_buf[0], llm_k_buf[1], llm_k_buf[2], llm_k_buf[3],
+                llm_v_buf[0], llm_v_buf[1]);
+        }
+#endif
 
         /* Gemma4: per-head Q/K normalization */
         if (layer->q_norm) {
@@ -8688,6 +8707,10 @@ static int llm_build_vocab(llm_model_t *m, gguf_ctx_t *ctx)
         m->vocab_scores = NULL;
     }
 
+    /* Get BPE merge ranks (tokenizer.ggml.merges) */
+    m->merges_kv = gguf_find_kv(ctx, "tokenizer.ggml.merges");
+    llm_build_merge_table(m);
+
     /* Get special token IDs */
     m->bos_id = (int)gguf_get_u32(ctx, "tokenizer.ggml.bos_token_id", 1);
     m->eos_id = (int)gguf_get_u32(ctx, "tokenizer.ggml.eos_token_id", 2);
@@ -8783,6 +8806,13 @@ static uint32_t llm_hash_str(const char *str, int len)
 static int32_t llm_vocab_ht[LLM_HASH_SIZE];
 static int llm_ht_ready = 0;
 
+/* BPE merge-rank table: maps merged string -> rank+1 (0 = not a merge).
+ * Rank = index in tokenizer.ggml.merges (smaller = higher priority). */
+static int32_t llm_merge_ht[LLM_HASH_SIZE];
+static int llm_merge_ht_ready = 0;
+
+static void llm_build_merge_table(llm_model_t *m);
+
 static void llm_build_hash_table(const llm_model_t *m)
 {
     /* Initialize all slots to -1 (empty) */
@@ -8829,6 +8859,70 @@ static int llm_find_token(const llm_model_t *m, const char *str, int len)
     return -1;
 }
 
+/* Build the BPE merge-rank hash table from tokenizer.ggml.merges */
+static void llm_build_merge_table(llm_model_t *m)
+{
+    for (int i = 0; i < LLM_HASH_SIZE; i++)
+        llm_merge_ht[i] = 0;
+    llm_merge_ht_ready = 0;
+    m->merge_strs = NULL;
+    m->merge_lens = NULL;
+    m->n_merges = 0;
+
+    const gguf_kv_t *kv = (const gguf_kv_t *)m->merges_kv;
+    if (!kv || kv->type != GGUF_TYPE_ARRAY ||
+        kv->value.array.elem_type != GGUF_TYPE_STRING)
+        return;
+
+    int n_merges = (int)kv->value.array.count;
+    if (n_merges <= 0) return;
+    m->merge_strs = (const char **)tensor_alloc((uint64_t)n_merges * sizeof(char *));
+    m->merge_lens = (int *)tensor_alloc((uint64_t)n_merges * sizeof(int));
+    if (!m->merge_strs || !m->merge_lens) {
+        m->n_merges = 0;
+        return;
+    }
+    m->n_merges = n_merges;
+
+    for (int i = 0; i < n_merges; i++) {
+        const char *s;
+        int len;
+        if (gguf_array_string_at(kv, i, &s, &len) != 0 || len <= 0 || len > 128)
+            continue;
+        m->merge_strs[i] = s;
+        m->merge_lens[i] = len;
+        uint32_t h = llm_hash_str(s, len);
+        uint32_t slot = h & (LLM_HASH_SIZE - 1);
+        int probes = 0;
+        while (llm_merge_ht[slot] != 0 && probes < LLM_HASH_SIZE) {
+            slot = (slot + 1) & (LLM_HASH_SIZE - 1);
+            probes++;
+        }
+        if (probes < LLM_HASH_SIZE)
+            llm_merge_ht[slot] = (int32_t)(i + 1); /* rank+1 */
+    }
+    llm_merge_ht_ready = 1;
+}
+
+/* Rank of merge string (1 = highest priority), 0 if not a merge pair */
+static int llm_merge_rank(const llm_model_t *m, const char *s, int len)
+{
+    if (!llm_merge_ht_ready || !m->merge_strs) return 0;
+    uint32_t h = llm_hash_str(s, len);
+    uint32_t slot = h & (LLM_HASH_SIZE - 1);
+    int probes = 0;
+    while (probes < 64) {
+        int32_t r = llm_merge_ht[slot];
+        if (r == 0) return 0;
+        if (r - 1 < m->n_merges &&
+            llm_str_match(m->merge_strs[r - 1], m->merge_lens[r - 1], s, len))
+            return r;
+        slot = (slot + 1) & (LLM_HASH_SIZE - 1);
+        probes++;
+    }
+    return 0;
+}
+
 /* Encode raw bytes to GPT-2 byte-level encoding (reverse of bpe_decode).
  * Maps control chars, space, etc. to their U+0100..U+0143 Unicode forms. */
 static int llm_bpe_encode(const char *src, int slen, char *dst, int dmax)
@@ -8836,11 +8930,15 @@ static int llm_bpe_encode(const char *src, int slen, char *dst, int dmax)
     int di = 0;
     for (int si = 0; si < slen && di < dmax - 2; si++) {
         uint8_t b = (uint8_t)src[si];
-        /* Passthrough bytes: ASCII printable (except space) + Latin-1 parts */
-        if ((b >= 0x21 && b <= 0x7E) ||
-            (b >= 0xA1 && b <= 0xAC) ||
-            (b >= 0xAE && b <= 0xFF)) {
+        /* ASCII printable (except space) passes through as-is */
+        if (b >= 0x21 && b <= 0x7E) {
             dst[di++] = (char)b;
+        } else if ((b >= 0xA1 && b <= 0xAC) || (b >= 0xAE && b <= 0xFF)) {
+            /* Latin-1 identity mapping (GPT-2 bytes_to_unicode): codepoint = b,
+             * encoded as two UTF-8 bytes. Vocab entries are stored in this
+             * form (e.g. raw byte 0xE4 → U+00E4 'ä' = C3 A4). */
+            dst[di++] = (char)(0xC0 | (b >> 6));
+            dst[di++] = (char)(0x80 | (b & 0x3F));
         } else {
             /* Remap to U+0100..U+0143 as UTF-8 */
             int idx;
@@ -8889,6 +8987,68 @@ static int llm_tokenize_segment(const llm_model_t *m, const char *text, int text
         enc_len = di;
     } else {
         enc_len = llm_bpe_encode(text, text_len, enc_buf, sizeof(enc_buf));
+    }
+
+    /* True GPT-2-style BPE: start from byte-level symbols and merge pairs in
+     * merge-rank order (the order of tokenizer.ggml.merges). This matches
+     * HuggingFace/llama.cpp tokenization exactly. */
+    if (!m->use_spm && llm_merge_ht_ready && enc_len > 0) {
+        static int sym[8192];
+        int nsym = 0;
+        for (int i = 0; i < enc_len && nsym < (int)(sizeof(sym) / sizeof(sym[0])) - 2; ) {
+            uint8_t b0 = (uint8_t)enc_buf[i];
+            int clen = 1;
+            if      (b0 >= 0xF0 && i + 3 < enc_len) clen = 4;
+            else if (b0 >= 0xE0 && i + 2 < enc_len) clen = 3;
+            else if (b0 >= 0xC0 && i + 1 < enc_len) clen = 2;
+            int id = llm_find_token(m, enc_buf + i, clen);
+            if (id < 0 && clen == 1) id = m->byte_tokens[b0];
+            if (id < 0 && clen == 1) {
+                /* try "<0xHH>" style byte token */
+                char hh[8];
+                int hx = b0 >> 4, lx = b0 & 15;
+                hh[0] = '<'; hh[1] = '0'; hh[2] = 'x';
+                hh[3] = hx < 10 ? '0' + hx : 'A' + hx - 10;
+                hh[4] = lx < 10 ? '0' + lx : 'A' + lx - 10;
+                hh[5] = '>'; hh[6] = 0;
+                id = llm_find_token(m, hh, 6);
+            }
+            if (id >= 0) sym[nsym++] = id;
+            i += clen;
+        }
+        while (nsym > 1) {
+            int best_i = -1, best_rank = 0x7fffffff, best_id = -1;
+            for (int i = 0; i < nsym - 1; i++) {
+                int l1 = m->vocab[sym[i]].len;
+                int l2 = m->vocab[sym[i + 1]].len;
+                if (l1 + l2 + 1 > 128) continue;
+                /* GGUF merges are stored as "first second" (space-separated) */
+                char pair[130];
+                kmemcpy(pair, m->vocab[sym[i]].str, l1);
+                pair[l1] = ' ';
+                kmemcpy(pair + l1 + 1, m->vocab[sym[i + 1]].str, l2);
+                int rank = llm_merge_rank(m, pair, l1 + 1 + l2);
+                if (rank > 0 && rank < best_rank) {
+                    best_rank = rank;
+                    best_i = i;
+                }
+            }
+            if (best_i < 0) break;
+            int l1 = m->vocab[sym[best_i]].len;
+            int l2 = m->vocab[sym[best_i + 1]].len;
+            char merged[128];
+            kmemcpy(merged, m->vocab[sym[best_i]].str, l1);
+            kmemcpy(merged + l1, m->vocab[sym[best_i + 1]].str, l2);
+            int mid = llm_find_token(m, merged, l1 + l2);
+            if (mid < 0) break; /* merged token missing from vocab: stop */
+            sym[best_i] = mid;
+            for (int i = best_i + 1; i < nsym - 1; i++)
+                sym[i] = sym[i + 1];
+            nsym--;
+        }
+        for (int i = 0; i < nsym && n < max_tokens; i++)
+            tokens[n++] = sym[i];
+        return n;
     }
 
     /* Greedy longest-match tokenization */
@@ -9072,17 +9232,20 @@ static int llm_bpe_decode(const char *src, int slen, char *dst, int dmax)
     int di = 0;
     for (int si = 0; si < slen && di < dmax - 1; ) {
         uint8_t c = (uint8_t)src[si];
-        if (c == 0xC4 && si + 1 < slen) {
+        if ((c == 0xC4 || c == 0xC5) && si + 1 < slen) {
             uint8_t c2 = (uint8_t)src[si + 1];
             if (c2 >= 0x80 && c2 <= 0xBF) {
-                int idx = c2 - 0x80;
+                int idx = (c == 0xC4) ? (c2 - 0x80) : 64 + (c2 - 0x80);
                 if (idx < 68) { dst[di++] = (char)bpe_rev[idx]; si += 2; continue; }
             }
-        } else if (c == 0xC5 && si + 1 < slen) {
+        } else if ((c == 0xC2 || c == 0xC3) && si + 1 < slen) {
+            /* Latin-1 identity range (GPT-2 bytes_to_unicode): map back to the
+             * single original byte 0x80..0xFF. */
             uint8_t c2 = (uint8_t)src[si + 1];
-            if (c2 >= 0x80 && c2 <= 0x83) {
-                int idx = 64 + (c2 - 0x80);
-                if (idx < 68) { dst[di++] = (char)bpe_rev[idx]; si += 2; continue; }
+            if (c2 >= 0x80 && c2 <= 0xBF) {
+                dst[di++] = (char)(((c & 0x1F) << 6) | (c2 & 0x3F));
+                si += 2;
+                continue;
             }
         }
         dst[di++] = src[si++];
@@ -13441,10 +13604,14 @@ void llm_debug_trace_layers(const char *text, int pos)
 }
 
 /* Debug utility: forward a raw token id at a position and print top-6 logits. */
+float llm_debug_vec_dot(const void *weight, const float *x, int in_dim, int type)
+{
+    return llm_vec_dot(weight, x, in_dim, (ggml_type_t)type);
+}
+
 void llm_debug_forward_token(int token_id, int pos, int reset_first)
 {
     if (!llm_is_loaded() || pos < 0) return;
-    if (__sync_lock_test_and_set(&llm_inference_active, 1)) return;
 
     llm_model_t *m = &llm_model;
     if (reset_first) {
@@ -13472,6 +13639,30 @@ void llm_debug_forward_token(int token_id, int pos, int reset_first)
         kfree(logits);
     }
     __sync_lock_release(&llm_inference_active);
+}
+
+/* Debug utility: run one forward pass and copy the full logits vector out.
+   Returns vocab_size, or 0 on failure. */
+int llm_debug_copy_logits(int token_id, int pos, int reset_first, float *out)
+{
+    if (!llm_is_loaded() || pos < 0 || !out) return 0;
+    if (__sync_lock_test_and_set(&llm_inference_active, 1)) return 0;
+
+    llm_model_t *m = &llm_model;
+    if (reset_first) {
+        m->cache_len = 0;
+        llm_rep_reset();
+    }
+    float *logits = (float *)kmalloc((size_t)m->vocab_size * sizeof(float));
+    int n = 0;
+    if (logits) {
+        llm_forward_token(m, logits, token_id, pos);
+        for (int v = 0; v < m->vocab_size; v++) out[v] = logits[v];
+        n = m->vocab_size;
+        kfree(logits);
+    }
+    __sync_lock_release(&llm_inference_active);
+    return n;
 }
 
 int llm_prompt_tokens(const char *user_text, int *output_tokens,

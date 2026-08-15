@@ -72,23 +72,29 @@ def _copy_tokenizer_from_gguf(writer, src_path: str) -> None:
         if v is None:
             return None
         parts = getattr(v, "parts", None)
-        if not parts:
+        if not parts or len(parts) < 3:
             return None
-        if len(parts) >= 2 and hasattr(parts[1], "shape"):
-            return bytes(np.asarray(parts[1], dtype=np.uint8).tolist())
+        # Scalar string layout: [key_type, key_name, ...]; value = parts[-1].
+        p = parts[-1]
+        if hasattr(p, "shape"):
+            return bytes(np.asarray(p, dtype=np.uint8).tolist())
         return None
 
     def _array_of_strings(key):
+        """ARRAY of STRING: gguf-python stores per-element part offsets in
+        field.data; each element's bytes live at parts[offset]. (String
+        lengths are varints and take a variable number of parts, so a fixed
+        stride over parts is NOT valid.)"""
         v = f.get(key)
         if v is None:
             return None
         parts = getattr(v, "parts", None)
-        if not parts or len(parts) < 5:
+        data = getattr(v, "data", None)
+        if not parts or data is None:
             return None
-        # gguf-python parts layout for an ARRAY of STRINGs:
-        #   [key, name, ARRAY, STRING, len0, str0, len1, str1, ...]
         out = []
-        for p in parts[5::2]:
+        for idx in data:
+            p = parts[int(idx)]
             if hasattr(p, "shape"):
                 out.append(bytes(np.asarray(p, dtype=np.uint8).tolist()))
         return out
@@ -98,14 +104,33 @@ def _copy_tokenizer_from_gguf(writer, src_path: str) -> None:
         if v is None:
             return None
         parts = getattr(v, "parts", None)
-        if not parts or len(parts) < 4:
+        data = getattr(v, "data", None)
+        if not parts or data is None:
             return None
         out = []
-        for p in parts[4:]:
+        for idx in data:
             try:
+                p = parts[int(idx)]
                 out.append(int(p.item() if hasattr(p, "item") else p))
             except Exception:
-                pass
+                out.append(0)
+        return out
+
+    def _array_of_floats(key):
+        v = f.get(key)
+        if v is None:
+            return None
+        parts = getattr(v, "parts", None)
+        data = getattr(v, "data", None)
+        if not parts or data is None:
+            return None
+        out = []
+        for idx in data:
+            try:
+                p = parts[int(idx)]
+                out.append(float(p.item() if hasattr(p, "item") else p))
+            except Exception:
+                out.append(0.0)
         return out
 
     def _int_field(key):
@@ -139,22 +164,26 @@ def _copy_tokenizer_from_gguf(writer, src_path: str) -> None:
             pass
     merges = _array_of_strings("tokenizer.ggml.merges")
     if merges:
-        writer.add_token_merges(merges)
-    scores = f.get("tokenizer.ggml.scores")
-    if scores is not None:
-        parts = getattr(scores, "parts", None)
-        if parts and len(parts) >= 4:
-            try:
-                vals = [float(p.item() if hasattr(p, "item") else p) for p in parts[4:]]
-                writer.add_token_scores(vals)
-            except Exception:
-                pass
+        try:
+            writer.add_token_merges([m.decode("utf-8", "replace") for m in merges])
+        except Exception:
+            pass
+    scores = _array_of_floats("tokenizer.ggml.scores")
+    if scores:
+        try:
+            writer.add_token_scores(scores)
+        except Exception:
+            pass
 
     for kv, fn in (
         ("tokenizer.ggml.bos_token_id", "add_bos_token_id"),
         ("tokenizer.ggml.eos_token_id", "add_eos_token_id"),
         ("tokenizer.ggml.unknown_token_id", "add_unk_token_id"),
+        ("tokenizer.ggml.separator_token_id", "add_sep_token_id"),
         ("tokenizer.ggml.padding_token_id", "add_pad_token_id"),
+        ("tokenizer.ggml.add_bos_token", "add_add_bos_token"),
+        ("tokenizer.ggml.add_eos_token", "add_add_eos_token"),
+        ("tokenizer.ggml.add_space_prefix", "add_add_space_prefix"),
     ):
         val = _int_field(kv)
         if val is not None:
@@ -162,6 +191,56 @@ def _copy_tokenizer_from_gguf(writer, src_path: str) -> None:
                 getattr(writer, fn)(val)
             except Exception:
                 pass
+
+    pre = _string_field("tokenizer.ggml.pre")
+    if pre is not None:
+        try:
+            writer.add_tokenizer_pre(pre.decode("utf-8", "replace"))
+        except Exception:
+            pass
+    chat_tpl = _string_field("tokenizer.chat_template")
+    if chat_tpl is not None:
+        try:
+            writer.add_chat_template(chat_tpl.decode("utf-8", "replace"))
+        except Exception:
+            pass
+
+
+def _copy_arch_metadata_from_gguf(writer, src_path: str, arch: str) -> None:
+    """Copy architecture metadata KV (rope.freq_base, rms_epsilon, ...) from
+    the source GGUF so the exported file keeps correct hyperparameters."""
+    from gguf import GGUFReader, GGUFValueType
+
+    r = GGUFReader(src_path)
+    skip = {
+        f"{arch}.block_count", f"{arch}.embedding_length",
+        f"{arch}.feed_forward_length", f"{arch}.head_count",
+        f"{arch}.head_count_kv", f"{arch}.context_length",
+        f"{arch}.vocab_size", "general.name", "general.description",
+        "general.file_type", "general.architecture",
+    }
+    for key, field in r.fields.items():
+        if key in skip or key.startswith("GGUF.") or key.startswith("tokenizer."):
+            continue
+        if not (key.startswith(f"{arch}.") or key.startswith("general.")):
+            continue
+        try:
+            types = getattr(field, "types", None) or []
+            vtype = types[-1] if types else None
+            parts = getattr(field, "parts", None)
+            if not parts or vtype is None:
+                continue
+            if vtype == GGUFValueType.ARRAY:
+                sub = types[-2] if len(types) >= 2 else None
+                vals = [
+                    (p.item() if hasattr(p, "item") else p) for p in parts[4:]
+                ]
+                writer.add_key_value(key, vals, vtype, sub)
+            else:
+                p = parts[-1]
+                writer.add_key_value(key, p.item() if hasattr(p, "item") else p, vtype)
+        except Exception as e:
+            print(f"[gguf] metadata copy failed for {key}: {e}")
 
 
 def _export_gguf(
@@ -198,24 +277,36 @@ def _export_gguf(
     writer.add_head_count_kv(config.get("num_key_value_heads", config.get("n_kv_heads", 0)))
     writer.add_context_length(config.get("max_position_embeddings", config.get("max_seq_len", 4096)))
     writer.add_vocab_size(config.get("vocab_size", 0))
-    writer.add_file_type(1)
+    # 0 = ALL_F32: prevents loaders (llama.cpp) from auto-converting our
+    # mixed fp16/fp32 tensor layout (RMS norms must stay fp32).
+    writer.add_file_type(0)
     if backend == "gguf":
         src = config.get("_gguf_path")
         if src and Path(src).exists():
             try:
                 _copy_tokenizer_from_gguf(writer, src)
+                _copy_arch_metadata_from_gguf(writer, src, arch)
             except Exception as e:
                 print(f"[gguf] tokenizer copy failed: {e}")
 
     tensor_count = 0
+    fp32_all = bool(kwargs.get("fp32", False))
     for key, tensor in sorted(state_dict.items()):
         if any(key.endswith(s) for s in (".q", ".scales", ".awq_scales", ".factored_A", ".factored_B")):
             continue
         if not hasattr(tensor, "cpu"):
             continue
-        W = tensor.float().cpu().numpy().astype(np.float16)
+        name = _hf_to_gguf_name(key, config)
+        # RMS norm weights and biases must stay F32 (llama.cpp does
+        # ggml_mul(f32, f32); our runtime assumes F32 biases).
+        is_f32 = name.endswith("_norm.weight") or name.endswith(".bias")
+        W = tensor.float().cpu().numpy()
+        if fp32_all or is_f32:
+            W = W.astype(np.float32)
+        else:
+            W = W.astype(np.float16)
         W = np.ascontiguousarray(W)
-        writer.add_tensor(_hf_to_gguf_name(key, config), W)
+        writer.add_tensor(name, W)
         tensor_count += 1
 
     writer.write_header_to_file()

@@ -652,7 +652,9 @@ int flash_attn_decode_strided(
     if (ncpu > 1 && nh > 1) {
         int heads_per_cpu = (int)ncpu > 0 ? nh / (int)ncpu : nh;
         int remainder     = nh % (int)ncpu;
-        int h = 0;
+        /* BSP takes the first chunk; APs start after it */
+        int bsp_end = heads_per_cpu + (remainder > 0 ? 1 : 0);
+        int h = bsp_end;
 
         /* Set up and dispatch to APs first */
         for (uint32_t c = 1; c < ncpu; c++) {
@@ -673,7 +675,6 @@ int flash_attn_decode_strided(
         }
 
         /* BSP handles the first slice */
-        int bsp_end = heads_per_cpu + (remainder > 0 ? 1 : 0);
         fa_work[0].output        = output;
         fa_work[0].q             = q;
         fa_work[0].k_base        = k_base;

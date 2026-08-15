@@ -250,6 +250,12 @@ typedef struct {
     /* Vocab lookup (allocated after GGUF data) */
     llm_vocab_entry_t *vocab;   /* [vocab_size] */
     float             *vocab_scores; /* [vocab_size] merge scores */
+    const void        *merges_kv;    /* GGUF KV: tokenizer.ggml.merges (ARRAY of STRING) */
+
+    /* BPE merge table (rank = index in merges list; 0 = not a merge) */
+    const char       **merge_strs; /* [n_merges] */
+    int               *merge_lens; /* [n_merges] */
+    int                n_merges;
 
     /* Hash table for O(1) token lookup by string */
     int32_t           *vocab_ht_slot; /* [LLM_HASH_SIZE] → vocab index or -1 */
@@ -412,6 +418,13 @@ void llm_debug_trace_layers(const char *text, int pos);
 
 /* Debug utility: forward a raw token id and print top-6 logits. */
 void llm_debug_forward_token(int token_id, int pos, int reset_first);
+
+/* Debug utility: compute one vec_dot against raw weight bytes. */
+float llm_debug_vec_dot(const void *weight, const float *x, int in_dim, int type);
+
+/* Debug utility: forward a raw token id and copy the full logits vector.
+   Returns vocab_size copied, or 0 on failure. */
+int llm_debug_copy_logits(int token_id, int pos, int reset_first, float *out);
 
 /** Execute a token-native tool/program callback without a text boundary. */
 int llm_execute_token_program(const int *input_tokens, int n_input_tokens,
