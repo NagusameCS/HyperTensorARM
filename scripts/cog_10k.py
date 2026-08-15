@@ -372,7 +372,8 @@ def main(n_interactions=10000, model_id="Qwen/Qwen2.5-1.5B-Instruct", resume=Fal
     
     t0 = time.perf_counter()
     model = AutoModelForCausalLM.from_pretrained(
-        model_id, torch_dtype=torch.float16, device_map="auto", trust_remote_code=True
+        model_id, torch_dtype=torch.float32, device_map=None,
+        trust_remote_code=True, low_cpu_mem_usage=False
     )
     tok = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
     if tok.pad_token is None:

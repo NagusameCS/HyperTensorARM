@@ -5050,9 +5050,19 @@ static void llm_gemv(float *out, const void *weight, const float *x,
         (type == GGML_TYPE_Q4_K || type == GGML_TYPE_Q6_K ||
          type == GGML_TYPE_Q5_0 || type == GGML_TYPE_Q8_0)) {
         int n16 = in_dim / 16;
-        int8_t  *xq = (int8_t *)malloc((size_t)in_dim);
-        float   *xs = (float *)malloc((size_t)n16 * sizeof(float));
-        int32_t *sm = (int32_t *)malloc((size_t)n16 * sizeof(int32_t));
+        static int8_t  *xq_s = NULL;
+        static float   *xs_s = NULL;
+        static int32_t *sm_s = NULL;
+        static int      cap_s = 0;
+        if (in_dim > cap_s) {
+            cap_s = in_dim + 4096;
+            xq_s = (int8_t *)realloc(xq_s, (size_t)cap_s);
+            xs_s = (float *)realloc(xs_s, (size_t)(cap_s / 16 + 1) * sizeof(float));
+            sm_s = (int32_t *)realloc(sm_s, (size_t)(cap_s / 16 + 1) * sizeof(int32_t));
+        }
+        int8_t  *xq = xq_s;
+        float   *xs = xs_s;
+        int32_t *sm = sm_s;
         if (xq && xs && sm) {
             llm_quantize_x_q8_16(x, in_dim, xq, xs, sm);
             qh_lut_init();
@@ -5100,9 +5110,6 @@ static void llm_gemv(float *out, const void *weight, const float *x,
                     .type = type, .row_start = 0, .row_end = out_dim,
                 });
             }
-            free(xq);
-            free(xs);
-            free(sm);
 #if defined(__aarch64__) && defined(__ARM_FEATURE_DOTPROD)
             if (gemv_prof_on == 1) {
                 int idx = -1;
@@ -5121,9 +5128,7 @@ static void llm_gemv(float *out, const void *weight, const float *x,
 #endif
             return;
         }
-        free(xq);
-        free(xs);
-        free(sm);
+        /* allocation failed — fall through to scalar path */
     }
 #endif
 
