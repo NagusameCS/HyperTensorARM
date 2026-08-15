@@ -1,0 +1,93 @@
+{
+  "machine": "Apple Silicon arm64 (8-core), clang",
+  "model": "qwen2.5-0.5b-instruct, HyperRetro ffn_rank=256 + int4(128) compressed",
+  "pipeline": "Q4_K_M GGUF -> compress -> export GGUF -> optional re-quantize -> geodessical",
+  "reference": {
+    "original_q4_k_m_decode_tok_s": 88.5,
+    "original_q4_k_m_ppl_ours": 7.94,
+    "original_q4_k_m_ppl_llama": 7.58,
+    "compressed_fp16_nll_ours_vs_llama": [
+      2.3962,
+      2.3663
+    ],
+    "compressed_q4km_nll_ours_vs_llama": [
+      2.4194,
+      2.3825
+    ]
+  },
+  "note": "llama.cpp oracle = llama.cpp fresh build (third_party/llama.cpp), per-token NLL over the same WikiText slice; tokenizer bit-identical.",
+  "models": {
+    "0.5B": {
+      "rows": [
+        {
+          "format": "fp16 (exported)",
+          "size_mb": 1208,
+          "decode_tok_s": 10.8,
+          "wiki_ppl_ours": 10.98,
+          "wiki_ppl_llama": null,
+          "speedup": "1.0x"
+        },
+        {
+          "format": "Q8_0 (re-quantized)",
+          "size_mb": 644,
+          "decode_tok_s": 108.7,
+          "wiki_ppl_ours": 10.98,
+          "wiki_ppl_llama": null,
+          "speedup": "10.0x"
+        },
+        {
+          "format": "Q4_K_M (re-quantized)",
+          "size_mb": 469,
+          "decode_tok_s": 109.2,
+          "wiki_ppl_ours": 11.24,
+          "wiki_ppl_llama": 10.83,
+          "speedup": "10.1x"
+        }
+      ],
+      "original_ppl_ours_vs_llama": [
+        7.94,
+        7.58
+      ],
+      "compressed_fp16_nll_ours_vs_llama": [
+        2.3962,
+        2.3663
+      ],
+      "compressed_q4km_nll_ours_vs_llama": [
+        2.4194,
+        2.3825
+      ]
+    },
+    "1.5B": {
+      "rows": [
+        {
+          "format": "fp16 (exported)",
+          "size_mb": 3560,
+          "decode_tok_s": 3.0,
+          "wiki_ppl_ours": 6.94,
+          "wiki_ppl_llama": 6.73,
+          "speedup": "1.0x"
+        },
+        {
+          "format": "Q4_K_M (re-quantized)",
+          "size_mb": 1066,
+          "decode_tok_s": 34.6,
+          "wiki_ppl_ours": 7.08,
+          "wiki_ppl_llama": null,
+          "speedup": "11.5x"
+        }
+      ],
+      "original_ppl_ours_vs_llama": [
+        5.99,
+        5.84
+      ],
+      "compressed_fp16_nll_ours_vs_llama": [
+        1.9369,
+        1.9067
+      ],
+      "compressed_q4km_nll_ours_vs_llama": [
+        1.9567,
+        null
+      ]
+    }
+  }
+}

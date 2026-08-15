@@ -230,6 +230,9 @@ def _copy_arch_metadata_from_gguf(writer, src_path: str, arch: str) -> None:
             parts = getattr(field, "parts", None)
             if not parts or vtype is None:
                 continue
+            if key.startswith("general."):
+                # GGUFWriter already emits general.* defaults; skip the copy.
+                continue
             if vtype == GGUFValueType.ARRAY:
                 sub = types[-2] if len(types) >= 2 else None
                 vals = [
@@ -238,6 +241,8 @@ def _copy_arch_metadata_from_gguf(writer, src_path: str, arch: str) -> None:
                 writer.add_key_value(key, vals, vtype, sub)
             else:
                 p = parts[-1]
+                if hasattr(p, "shape") and len(p.shape) > 0:
+                    continue
                 writer.add_key_value(key, p.item() if hasattr(p, "item") else p, vtype)
         except Exception as e:
             print(f"[gguf] metadata copy failed for {key}: {e}")
