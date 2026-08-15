@@ -241,8 +241,6 @@ def _copy_arch_metadata_from_gguf(writer, src_path: str, arch: str) -> None:
                 writer.add_key_value(key, vals, vtype, sub)
             else:
                 p = parts[-1]
-                if hasattr(p, "shape") and len(p.shape) > 0:
-                    continue
                 writer.add_key_value(key, p.item() if hasattr(p, "item") else p, vtype)
         except Exception as e:
             print(f"[gguf] metadata copy failed for {key}: {e}")
