@@ -11,6 +11,7 @@ matrix.
 | Layer | Status |
 |---|---|
 | C runtime `geodessical` (GGUF inference, NEON backend, arm64 JIT, Accelerate) | ✅ Builds & runs — numerics match llama.cpp oracle |
+| Apple ARM NEON dotprod (SDOT) GEMV kernels (Q5_0/Q8_0/Q4_K/Q6_K, SMP split) | ✅ **4.9 → 48.1 tok/s decode** (~10×), parity kept |
 | C tests (kernels, model_meta, chat, tokenizer) | ✅ All pass |
 | Python suites (pytest: 108/108, audit 33/33, external verification 28/28) | ✅ Pass |
 | ht-repro REST + SQLite | ✅ Pass |

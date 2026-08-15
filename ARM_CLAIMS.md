@@ -25,7 +25,20 @@ comparison.
 | 12 | ACM learns the ζ involution in latent space | Runs on ARM/MPS: ι²≈id err 0.0036, TEH detection 15/15, 0 false positives (`benchmarks/acm_prototype/`) | ✅ MET |
 | 13 | Bridge protocol: 105 known zeros, jury confidence J ≈ 1 − 10⁻³¹⁵ | 105/105 zeros detected, J ≈ 1−10⁻³¹⁵ (`benchmarks/jury_bridge/faithfulness_report.json`) | ✅ MET |
 | 14 | Papers 15/18 at 100% | Riemann T1 suite re-runs on ARM (4 smoke + comprehensive artifacts carried over); content claims unchanged | ✅ MET (carry-over) |
-| 15 | HyperTensor C runtime (geodessical) | Full ARM port: builds with clang/arm64, NEON backend + arm64 JIT + Accelerate; **numerics match llama.cpp oracle** (PPL 7.17 vs 7.21, mean per-token |Δ| = 0.037 nats on a 197-token prefix; full 512-token `--ppl-eval` = 19.34) | ✅ MET |
+| 15 | HyperTensor C runtime (geodessical) | Full ARM port: builds with clang/arm64, NEON backend + arm64 JIT + Accelerate; **numerics match llama.cpp oracle** (NLL 1.9762 vs 1.9760, per-token mean |Δ| = 0.040 nats on a 197-token prefix; 512-token `--ppl-eval` = 19.03) | ✅ MET |
+
+## Apple ARM advantages exploited (2026-08-14)
+
+- **NEON dotprod (SDOT) GEMV kernels** for Q5_0/Q8_0/Q4_K/Q6_K with
+  per-16-element input quantization (ggml convention) + SMP row splitting:
+  **decode 4.9 → 48.1 tok/s (~10×)** on the Qwen2.5-0.5B Q4_K_M model, with
+  oracle parity maintained (NLL 1.9762 vs llama.cpp 1.9760; scalar path was
+  1.9696). The x-quantized SDOT path is *closer* to llama.cpp because
+  llama.cpp itself quantizes activations.
+- **Unified memory**: no PCIe copies — the entire GGUF is mmap'd and streamed
+  from one pool; enables 1.5B+ models without VRAM limits.
+- **MPS**: used by AGT/ACM/audit suites (live MPS matmul checks).
+- Toggle with `HT_NEON_FAST=0`; profile GEMVs with `GD_GEMV_PROF=1`.
 
 ## Verified on ARM (executed this machine)
 

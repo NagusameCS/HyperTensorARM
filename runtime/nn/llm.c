@@ -4521,9 +4521,353 @@ static void gemv_worker_avx2(void *arg)
 }
 #endif
 
+#if defined(__aarch64__) && defined(__ARM_FEATURE_DOTPROD)
+/* ============================================================================
+   Apple ARM NEON dotprod fast paths (SDOT) for Q4_K / Q6_K GEMV rows.
+   Exploits the ARMv8.2+ integer dot-product unit: 4 int8 MACs per lane per
+   cycle (vs 1 f32 FMA per lane), plus per-16-element input quantization
+   (ggml-style) so both sides stay in int8.  HT_NEON_FAST=0 disables.
+   ========================================================================== */
+
+static int llm_neon_fast = -1;
+
+/* Temp profiling: accumulate llm_gemv time by (out_dim,in_dim,type). */
+typedef struct { int out_dim, in_dim, type; uint64_t us; int calls; } gemv_prof_t;
+static gemv_prof_t gemv_prof[64];
+static int gemv_prof_n = 0;
+static int gemv_prof_on = -1;
+
+static void gemv_prof_dump(void)
+{
+    if (gemv_prof_on != 1) return;
+    kprintf("== GEMV PROFILE ==\n");
+    for (int i = 0; i < gemv_prof_n; i++)
+        kprintf("  out=%7d in=%5d type=%2d calls=%6d total=%9.2fms\n",
+                gemv_prof[i].out_dim, gemv_prof[i].in_dim, gemv_prof[i].type,
+                gemv_prof[i].calls, gemv_prof[i].us / 1000.0);
+}
+
+static int llm_neon_fast_enabled(void)
+{
+    if (llm_neon_fast < 0) {
+        const char *e = getenv("HT_NEON_FAST");
+        llm_neon_fast = (!e || e[0] != '0');
+    }
+    return llm_neon_fast;
+}
+
+static int llm_neon_debug_once = 0;
+
+/* Quantize x into 16-element Q8 groups: per-group float scale + int8 codes.
+ * Also caches the int32 sum of each group (needed for the dmin/m offset terms
+ * in Q4_K and the -32 offset in Q6_K). */
+static void llm_quantize_x_q8_16(const float *x, int n,
+                                 int8_t *xq, float *xs, int32_t *sum16)
+{
+    int n16 = n / 16;
+    for (int b = 0; b < n16; b++) {
+        const float *xb = x + b * 16;
+        float amax = 0.0f;
+        for (int i = 0; i < 16; i++) {
+            float a = fabsf(xb[i]);
+            if (a > amax) amax = a;
+        }
+        if (amax < 1e-30f) {
+            xs[b] = 0.0f;
+            sum16[b] = 0;
+            kmemset(xq + b * 16, 0, 16);
+            continue;
+        }
+        xs[b] = amax / 127.0f;
+        float id = 127.0f / amax;
+        int32_t s = 0;
+        for (int i = 0; i < 16; i++) {
+            int q = (int)lrintf(xb[i] * id);
+            if (q > 127) q = 127;
+            else if (q < -127) q = -127;
+            xq[b * 16 + i] = (int8_t)q;
+            s += q;
+        }
+        sum16[b] = s;
+    }
+}
+
+/* Q4_K row dot with SDOT: value = d*sc*q - dmin*m (per 32-element sub-block).
+ * Uses pre-quantized input xq/xs/sum16 (per 16-group). */
+static float llm_vec_dot_q4k_neon(const uint8_t *p, const int8_t *xq,
+                                  const float *xs, const int32_t *sum16, int n)
+{
+    float sum = 0.0f;
+    int nsb = n / 256;
+    const int32x4_t zero = vdupq_n_s32(0);
+    const uint8x16_t mf = vdupq_n_u8(0x0F);
+
+    for (int b = 0; b < nsb; b++) {
+        uint16_t dh = *(const uint16_t *)p;
+        uint16_t dmh = *(const uint16_t *)(p + 2);
+        float d    = fp16_to_fp32(dh);
+        float dmin = fp16_to_fp32(dmh);
+        const uint8_t *scales = p + 4;
+        const uint8_t *qs     = p + 16;
+        p += 144;
+
+        const int8_t  *xqb = xq + b * 256;
+        const float   *xsb = xs + b * 16;
+        const int32_t *smb = sum16 + b * 16;
+
+        int is = 0;
+        for (int j = 0; j < 256; j += 64) {
+            uint8_t sc0, m0, sc1, m1;
+            /* Same scale/min extraction as the scalar reference */
+            if (is < 4) {
+                sc0 = scales[is] & 63;
+                m0  = scales[is + 4] & 63;
+            } else {
+                sc0 = (scales[is + 4] & 0xF) | ((scales[is - 4] >> 6) << 4);
+                m0  = (scales[is + 4] >> 4)  | ((scales[is] >> 6) << 4);
+            }
+            int is1 = is + 1;
+            if (is1 < 4) {
+                sc1 = scales[is1] & 63;
+                m1  = scales[is1 + 4] & 63;
+            } else {
+                sc1 = (scales[is1 + 4] & 0xF) | ((scales[is1 - 4] >> 6) << 4);
+                m1  = (scales[is1 + 4] >> 4)  | ((scales[is1] >> 6) << 4);
+            }
+
+            const uint8_t *qj = qs + (j / 2);
+            uint8x16_t q0 = vld1q_u8(qj);
+            uint8x16_t q1 = vld1q_u8(qj + 16);
+            int32x4_t dA0 = vdotq_s32(zero, (int8x16_t)vandq_u8(q0, mf), vld1q_s8(xqb + j));
+            int32x4_t dA1 = vdotq_s32(zero, (int8x16_t)vandq_u8(q1, mf), vld1q_s8(xqb + j + 16));
+            int32x4_t dB0 = vdotq_s32(zero, (int8x16_t)vshrq_n_u8(q0, 4),  vld1q_s8(xqb + j + 32));
+            int32x4_t dB1 = vdotq_s32(zero, (int8x16_t)vshrq_n_u8(q1, 4),  vld1q_s8(xqb + j + 48));
+            int32_t A0 = vaddvq_s32(dA0), A1 = vaddvq_s32(dA1);
+            int32_t B0 = vaddvq_s32(dB0), B1 = vaddvq_s32(dB1);
+
+            int gi = j / 16;  /* 16-group index within the super-block */
+            float qa = xsb[gi] * A0 + xsb[gi + 1] * A1;
+            float qb = xsb[gi + 2] * B0 + xsb[gi + 3] * B1;
+            float sa = xsb[gi] * smb[gi] + xsb[gi + 1] * smb[gi + 1];
+            float sb = xsb[gi + 2] * smb[gi + 2] + xsb[gi + 3] * smb[gi + 3];
+
+            sum += d * (float)sc0 * qa - dmin * (float)m0 * sa;
+            sum += d * (float)sc1 * qb - dmin * (float)m1 * sb;
+            is += 2;
+        }
+    }
+    return sum;
+}
+
+/* Q6_K row dot with SDOT: value = d * sc * (q - 32), q = 6-bit.
+ * q - 32 = nibble + 16*(2 high bits) - 32. */
+static float llm_vec_dot_q6k_neon(const ggml_q6_k_t *block, const int8_t *xq,
+                                  const float *xs, const int32_t *sum16, int n)
+{
+    float sum = 0.0f;
+    int nsb = n / 256;
+    const int32x4_t zero = vdupq_n_s32(0);
+    const uint8x16_t mf = vdupq_n_u8(0x0F);
+    const uint8x16_t m3 = vdupq_n_u8(0x03);
+
+    for (int b = 0; b < nsb; b++) {
+        const uint8_t *ql = block[b].ql;
+        const uint8_t *qh = block[b].qh;
+        const int8_t  *sc = block[b].scales;
+        float d = fp16_to_fp32(block[b].d);
+
+        const int8_t  *xqb = xq + b * 256;
+        const float   *xsb = xs + b * 16;
+        const int32_t *smb = sum16 + b * 16;
+
+        for (int half = 0; half < 2; half++) {
+            const uint8_t *ql_h = ql + half * 64;
+            const uint8_t *qh_h = qh + half * 32;
+            const int8_t  *sc_h = sc + half * 8;
+            const int8_t  *x_h  = xqb + half * 128;
+            const float   *xs_h = xsb + half * 8;
+            const int32_t *sm_h = smb + half * 8;
+
+            for (int si0 = 0; si0 < 2; si0++) {
+                int l0 = si0 * 16;
+                uint8x16_t vh = vld1q_u8(qh_h + l0);
+                uint8x16_t hA = vandq_u8(vh, m3);
+                uint8x16_t hB = vandq_u8(vshrq_n_u8(vh, 2), m3);
+                uint8x16_t hC = vandq_u8(vshrq_n_u8(vh, 4), m3);
+                uint8x16_t hD = vshrq_n_u8(vh, 6);
+
+                uint8x16_t q0 = vld1q_u8(ql_h + l0);
+                uint8x16_t q1 = vld1q_u8(ql_h + l0 + 32);
+
+                int32x4_t A = vdotq_s32(zero, (int8x16_t)vandq_u8(q0, mf), vld1q_s8(x_h + l0));
+                int32x4_t B = vdotq_s32(zero, (int8x16_t)vandq_u8(q1, mf), vld1q_s8(x_h + l0 + 32));
+                int32x4_t C = vdotq_s32(zero, (int8x16_t)vshrq_n_u8(q0, 4),  vld1q_s8(x_h + l0 + 64));
+                int32x4_t D = vdotq_s32(zero, (int8x16_t)vshrq_n_u8(q1, 4),  vld1q_s8(x_h + l0 + 96));
+                A = vmlaq_n_s32(A, vdotq_s32(zero, (int8x16_t)hA, vld1q_s8(x_h + l0)), 16);
+                B = vmlaq_n_s32(B, vdotq_s32(zero, (int8x16_t)hB, vld1q_s8(x_h + l0 + 32)), 16);
+                C = vmlaq_n_s32(C, vdotq_s32(zero, (int8x16_t)hC, vld1q_s8(x_h + l0 + 64)), 16);
+                D = vmlaq_n_s32(D, vdotq_s32(zero, (int8x16_t)hD, vld1q_s8(x_h + l0 + 96)), 16);
+
+                int32_t a = vaddvq_s32(A), bb = vaddvq_s32(B);
+                int32_t c = vaddvq_s32(C), dd = vaddvq_s32(D);
+
+                float tA = xs_h[si0]     * ((float)a  - 32.0f * (float)sm_h[si0]);
+                float tB = xs_h[2 + si0] * ((float)bb - 32.0f * (float)sm_h[2 + si0]);
+                float tC = xs_h[4 + si0] * ((float)c  - 32.0f * (float)sm_h[4 + si0]);
+                float tD = xs_h[6 + si0] * ((float)dd - 32.0f * (float)sm_h[6 + si0]);
+
+                sum += d * ((float)sc_h[0 + si0] * tA + (float)sc_h[2 + si0] * tB +
+                            (float)sc_h[4 + si0] * tC + (float)sc_h[6 + si0] * tD);
+            }
+        }
+    }
+    return sum;
+}
+
+typedef struct {
+    float       *out;
+    const void  *weight;
+    const int8_t *xq;
+    const float  *xs;
+    const int32_t *sum16;
+    const float  *x;    /* scalar fallback input */
+    int          out_dim;
+    int          in_dim;
+    ggml_type_t  type;
+    int          row_start;
+    int          row_end;
+} gemv_work_arm_t;
+
+/* Q5_0 high-bit expansion LUT: lut[byte][k] = bit k of byte (k=0..7). */
+static uint8_t qh_expand_lut[256][8];
+static volatile int qh_lut_done = 0;
+
+static void qh_lut_init(void)
+{
+    if (__atomic_load_n(&qh_lut_done, __ATOMIC_ACQUIRE)) return;
+    for (int b = 0; b < 256; b++)
+        for (int k = 0; k < 8; k++)
+            qh_expand_lut[b][k] = (uint8_t)((b >> k) & 1);
+    __atomic_store_n(&qh_lut_done, 1, __ATOMIC_RELEASE);
+}
+
+/* Q5_0 row dot with SDOT.
+ * Block: d(fp16) + qh uint32 (32 high bits) + qs[16] nibbles.
+ * value = d * ((nibble | (16*bit)) - 16) per element. */
+static float llm_vec_dot_q5_0_neon(const uint8_t *p, const int8_t *xq,
+                                   const float *xs, const int32_t *sum16, int n)
+{
+    float sum = 0.0f;
+    int nb = n / 32;
+    const int32x4_t zero = vdupq_n_s32(0);
+    const uint8x16_t mf = vdupq_n_u8(0x0F);
+    const uint8_t *lut = (const uint8_t *)qh_expand_lut;
+
+    for (int b = 0; b < nb; b++) {
+        uint16_t dh = *(const uint16_t *)p;          /* unaligned: fine on arm64 */
+        float d = fp16_to_fp32(dh);
+        uint32_t qh = *(const uint32_t *)(p + 2);
+        const uint8_t *qs = p + 6;
+        p += 22;
+
+        const int8_t  *xqb = xq + b * 32;
+        const float   *xsb = xs + b * 2;
+        const int32_t *smb = sum16 + b * 2;
+
+        uint8x16_t qv = vld1q_u8(qs);
+        int32x4_t dA = vdotq_s32(zero, (int8x16_t)vandq_u8(qv, mf), vld1q_s8(xqb));
+        int32x4_t dB = vdotq_s32(zero, (int8x16_t)vshrq_n_u8(qv, 4),  vld1q_s8(xqb + 16));
+
+        /* high bits: qh bytes 0,1 -> elements 0..15; bytes 2,3 -> 16..31 */
+        uint8x8_t e0 = vld1_u8(lut + (size_t)((qh >> 0)  & 0xFF) * 8);
+        uint8x8_t e1 = vld1_u8(lut + (size_t)((qh >> 8)  & 0xFF) * 8);
+        uint8x8_t e2 = vld1_u8(lut + (size_t)((qh >> 16) & 0xFF) * 8);
+        uint8x8_t e3 = vld1_u8(lut + (size_t)((qh >> 24) & 0xFF) * 8);
+        int8x16_t hA = vcombine_s8((int8x8_t)e0, (int8x8_t)e1);
+        int8x16_t hB = vcombine_s8((int8x8_t)e2, (int8x8_t)e3);
+
+        dA = vmlaq_n_s32(dA, vdotq_s32(zero, hA, vld1q_s8(xqb)), 16);
+        dB = vmlaq_n_s32(dB, vdotq_s32(zero, hB, vld1q_s8(xqb + 16)), 16);
+
+        int32_t a = vaddvq_s32(dA), bb = vaddvq_s32(dB);
+        sum += d * (xsb[0] * ((float)a  - 16.0f * (float)smb[0]) +
+                    xsb[1] * ((float)bb - 16.0f * (float)smb[1]));
+    }
+    return sum;
+}
+
+/* Q8_0 row dot with SDOT: value = d * qs (signed int8, 32-wide blocks).
+ * Reuses the per-16 quantized input: block j spans 16-groups 2j, 2j+1. */
+static float llm_vec_dot_q8_0_neon(const ggml_q8_0_t *block, const int8_t *xq,
+                                   const float *xs, const int32_t *sum16, int n)
+{
+    float sum = 0.0f;
+    int nb = n / 32;
+    const int32x4_t zero = vdupq_n_s32(0);
+    (void)sum16;
+
+    for (int b = 0; b < nb; b++) {
+        float d = fp16_to_fp32(*(const uint16_t *)&block[b].d);
+        const int8_t *qs = block[b].qs;
+        const int8_t *xqb = xq + b * 32;
+        const float *xsb = xs + b * 2;
+
+        int32x4_t dA = vdotq_s32(zero, vld1q_s8(qs), vld1q_s8(xqb));
+        int32x4_t dB = vdotq_s32(zero, vld1q_s8(qs + 16), vld1q_s8(xqb + 16));
+
+        sum += d * (xsb[0] * (float)vaddvq_s32(dA) +
+                    xsb[1] * (float)vaddvq_s32(dB));
+    }
+    return sum;
+}
+
+static gemv_work_arm_t gemv_work_arm_items[MAX_CPUS];
+
+static void gemv_worker_neon(void *arg)
+{
+    gemv_work_arm_t *w = (gemv_work_arm_t *)arg;
+    uint64_t rb = llm_row_bytes(w->in_dim, w->type);
+    const uint8_t *base = (const uint8_t *)w->weight;
+
+    for (int i = w->row_start; i < w->row_end; i++) {
+        if (i + 1 < w->row_end)
+            __builtin_prefetch(base + (uint64_t)(i + 1) * rb, 0, 3);
+        const uint8_t *row = base + (uint64_t)i * rb;
+        switch (w->type) {
+        case GGML_TYPE_Q4_K:
+            w->out[i] = llm_vec_dot_q4k_neon(row, w->xq, w->xs, w->sum16, w->in_dim);
+            break;
+        case GGML_TYPE_Q6_K:
+            w->out[i] = llm_vec_dot_q6k_neon((const ggml_q6_k_t *)row,
+                                              w->xq, w->xs, w->sum16, w->in_dim);
+            break;
+        case GGML_TYPE_Q5_0:
+            w->out[i] = llm_vec_dot_q5_0_neon(row, w->xq, w->xs, w->sum16, w->in_dim);
+            break;
+        case GGML_TYPE_Q8_0:
+            w->out[i] = llm_vec_dot_q8_0_neon((const ggml_q8_0_t *)row,
+                                              w->xq, w->xs, w->sum16, w->in_dim);
+            break;
+        default:
+            w->out[i] = llm_vec_dot(row, w->x, w->in_dim, w->type);
+            break;
+        }
+    }
+}
+#endif /* __aarch64__ && __ARM_FEATURE_DOTPROD */
+
 static void llm_gemv(float *out, const void *weight, const float *x,
                      int out_dim, int in_dim, ggml_type_t type)
 {
+#if defined(__aarch64__) && defined(__ARM_FEATURE_DOTPROD)
+    uint64_t _p0 = 0;
+    if (gemv_prof_on < 0) {
+        const char *e = getenv("GD_GEMV_PROF");
+        gemv_prof_on = (e && e[0] && e[0] != '0') ? 1 : 0;
+        if (gemv_prof_on == 1) atexit(gemv_prof_dump);
+    }
+    if (gemv_prof_on == 1) _p0 = hal_timer_us();
+#endif
 #ifdef ENABLE_CUDA
     /* GPU-accelerated GEMV: look up pre-uploaded device weight.
      * Use the GPU-resident type (may differ from host type, e.g. IQ2_XS uploaded as F32). */
@@ -4688,12 +5032,111 @@ static void llm_gemv(float *out, const void *weight, const float *x,
     }
 #endif
 
+#if defined(__aarch64__) && defined(__ARM_FEATURE_DOTPROD)
+    /* Apple ARM fast path: SDOT kernels + SMP row split for Q5_0/Q8_0/Q4_K/Q6_K. */
+    if (llm_neon_fast_enabled() && in_dim >= 16 &&
+        (type == GGML_TYPE_Q4_K || type == GGML_TYPE_Q6_K ||
+         type == GGML_TYPE_Q5_0 || type == GGML_TYPE_Q8_0)) {
+        int n16 = in_dim / 16;
+        int8_t  *xq = (int8_t *)malloc((size_t)in_dim);
+        float   *xs = (float *)malloc((size_t)n16 * sizeof(float));
+        int32_t *sm = (int32_t *)malloc((size_t)n16 * sizeof(int32_t));
+        if (xq && xs && sm) {
+            llm_quantize_x_q8_16(x, in_dim, xq, xs, sm);
+            qh_lut_init();
+
+            uint32_t ncpu = smp.ap_started + 1;
+            if (!llm_neon_debug_once) {
+                llm_neon_debug_once = 1;
+                kprintf("[LLM] NEON fast GEMV active (type=%d, out=%d, ncpu=%u)\n",
+                        (int)type, out_dim, ncpu);
+            }
+            if (ncpu > 1 && out_dim >= 256) {
+                int rows_per_cpu = out_dim / (int)ncpu;
+                int remainder    = out_dim % (int)ncpu;
+                int row = 0;
+                int bsp_start = 0;
+                int bsp_end   = rows_per_cpu + (remainder > 0 ? 1 : 0);
+                row = bsp_end;
+
+                for (uint32_t c = 1; c < ncpu; c++) {
+                    int chunk = rows_per_cpu + ((int)c < remainder ? 1 : 0);
+                    gemv_work_arm_items[c].out      = out;
+                    gemv_work_arm_items[c].weight   = weight;
+                    gemv_work_arm_items[c].xq       = xq;
+                    gemv_work_arm_items[c].xs       = xs;
+                    gemv_work_arm_items[c].sum16    = sm;
+                    gemv_work_arm_items[c].x        = x;
+                    gemv_work_arm_items[c].out_dim  = out_dim;
+                    gemv_work_arm_items[c].in_dim   = in_dim;
+                    gemv_work_arm_items[c].type     = type;
+                    gemv_work_arm_items[c].row_start = row;
+                    gemv_work_arm_items[c].row_end   = row + chunk;
+                    smp_dispatch(c, gemv_worker_neon, &gemv_work_arm_items[c]);
+                    row += chunk;
+                }
+                gemv_worker_neon(&(gemv_work_arm_t){
+                    .out = out, .weight = weight, .xq = xq, .xs = xs,
+                    .sum16 = sm, .x = x, .out_dim = out_dim, .in_dim = in_dim,
+                    .type = type, .row_start = bsp_start, .row_end = bsp_end,
+                });
+                smp_wait_all();
+            } else {
+                gemv_worker_neon(&(gemv_work_arm_t){
+                    .out = out, .weight = weight, .xq = xq, .xs = xs,
+                    .sum16 = sm, .x = x, .out_dim = out_dim, .in_dim = in_dim,
+                    .type = type, .row_start = 0, .row_end = out_dim,
+                });
+            }
+            free(xq);
+            free(xs);
+            free(sm);
+#if defined(__aarch64__) && defined(__ARM_FEATURE_DOTPROD)
+            if (gemv_prof_on == 1) {
+                int idx = -1;
+                for (int k = 0; k < gemv_prof_n; k++)
+                    if (gemv_prof[k].out_dim == out_dim && gemv_prof[k].in_dim == in_dim
+                        && gemv_prof[k].type == (int)type) { idx = k; break; }
+                if (idx < 0 && gemv_prof_n < 64) idx = gemv_prof_n++;
+                if (idx >= 0) {
+                    gemv_prof[idx].out_dim = out_dim;
+                    gemv_prof[idx].in_dim = in_dim;
+                    gemv_prof[idx].type = (int)type;
+                    gemv_prof[idx].us += hal_timer_us() - _p0;
+                    gemv_prof[idx].calls++;
+                }
+            }
+#endif
+            return;
+        }
+        free(xq);
+        free(xs);
+        free(sm);
+    }
+#endif
+
     uint64_t rb = llm_row_bytes(in_dim, type);
 
     for (int i = 0; i < out_dim; i++) {
         const void *row = (const uint8_t *)weight + (uint64_t)i * rb;
         out[i] = llm_vec_dot(row, x, in_dim, type);
     }
+#if defined(__aarch64__) && defined(__ARM_FEATURE_DOTPROD)
+    if (gemv_prof_on == 1) {
+        int idx = -1;
+        for (int k = 0; k < gemv_prof_n; k++)
+            if (gemv_prof[k].out_dim == out_dim && gemv_prof[k].in_dim == in_dim
+                && gemv_prof[k].type == (int)type) { idx = k; break; }
+        if (idx < 0 && gemv_prof_n < 64) idx = gemv_prof_n++;
+        if (idx >= 0) {
+            gemv_prof[idx].out_dim = out_dim;
+            gemv_prof[idx].in_dim = in_dim;
+            gemv_prof[idx].type = (int)type;
+            gemv_prof[idx].us += hal_timer_us() - _p0;
+            gemv_prof[idx].calls++;
+        }
+    }
+#endif
 }
 
 /* Batched GEMV — processes batch_size input vectors against the
