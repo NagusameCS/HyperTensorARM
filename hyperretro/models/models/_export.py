@@ -82,7 +82,7 @@ def _export_gguf(
     writer.add_description(
         f"HyperRetro compressed ({backend}). "
         f"Quantize: llama-quantize {path.name} out.gguf Q4_K_M"
-    )
+)
     n_layers = config.get("num_hidden_layers", config.get("n_layers",
                          config.get("prelude_layers", 0) + 1 + config.get("coda_layers", 0)))
     writer.add_block_count(n_layers)
@@ -115,7 +115,7 @@ def _export_gguf(
 
     if quantize_type:
         qpath = path.with_suffix(f".{quantize_type}.gguf")
-        print(f"[gguf] quantizing to {quantize_type} (requires llama-quantize on PATH) ...")
+        print(f"[gguf] quantizing to {quantize_type} (requires llama-quantize on PATH)...")
         try:
             subprocess.run(["llama-quantize", str(path), str(qpath), quantize_type],
                          check=True, capture_output=True, timeout=600)
@@ -123,10 +123,10 @@ def _export_gguf(
             print(f"[gguf] → {qpath} ({q_mb:.1f} MB {quantize_type}, {fp16_mb/q_mb:.1f}x shrink)")
             path.unlink(); qpath.rename(path)
         except FileNotFoundError:
-            print(f"[gguf] ⚠️  llama-quantize not found. Install llama.cpp.")
+            print(f"[gguf] WARN  llama-quantize not found. Install llama.cpp.")
             print(f"[gguf]    Then run: llama-quantize {path} {qpath} {quantize_type}")
         except Exception as e:
-            print(f"[gguf] ⚠️  quantize failed: {e}")
+            print(f"[gguf] WARN  quantize failed: {e}")
     return path
 
 
@@ -176,7 +176,7 @@ def _export_safetensors(
     if isinstance(model, CompressedModel) and model.manifest:
         (path / "hyperretro_factored.json").write_text(
             json.dumps(model.manifest, indent=2)
-        )
+)
 
     size_mb = (path / "model.safetensors").stat().st_size / 1e6
     print(f"[safetensors] {path} ({size_mb:.1f} MB, {len(out_sd)} tensors)")
@@ -300,9 +300,9 @@ def _reconstruct_for_export(compressed: CompressedModel) -> dict:
                 A = dequantize_blockwise_int4(W_qa, scales_a)
                 B = dequantize_blockwise_int4(W_qb, scales_b)
                 if awq_a is not None:
-                    A = A / awq_a[None, :]
+                    A = A / awq_a[None,:]
                 if awq_b is not None:
-                    B = B / awq_b[None, :]
+                    B = B / awq_b[None,:]
                 factored_map[prefix] = [torch.from_numpy(A), torch.from_numpy(B)]
 
     # Materialize factored
@@ -320,7 +320,7 @@ def _reconstruct_for_export(compressed: CompressedModel) -> dict:
         W_q = unpack_int4_rows(packed, n_cols)
         W = dequantize_blockwise_int4(W_q, scales)
         if awq is not None:
-            W = W / awq[None, :]
+            W = W / awq[None,:]
         dense_sd[base] = torch.from_numpy(W.astype(np.float16))
 
     # Copy remaining

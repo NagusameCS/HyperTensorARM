@@ -302,9 +302,17 @@ def _compress_generic(
         m, n = tuple(tensor.shape)
         W = tensor.float().cpu().numpy()
 
-        # Determine rank
-        is_ffn = any(pat in key for pat in [".ffn.", ".mlp.", ".experts."])
-        is_attn = any(pat in key for pat in [".attn.", ".self_attn."])
+        # Determine rank. Handles HF names (q_proj/gate_proj) and GGUF names
+        # (blk.N.ffn_gate.weight / blk.N.attn_q.weight). Norms, embeddings
+        # and heads are excluded by the explicit patterns.
+        is_ffn = any(pat in key for pat in [
+            ".ffn_gate.", ".ffn_up.", ".ffn_down.", ".ffn.", ".mlp.", ".experts.",
+            "gate_proj.", "up_proj.", "down_proj.",
+        ])
+        is_attn = any(pat in key for pat in [
+            ".attn_q.", ".attn_k.", ".attn_v.", ".attn_output.",
+            "q_proj.", "k_proj.", "v_proj.", "o_proj.",
+        ])
         rank = ffn_rank if is_ffn else (attn_rank if is_attn else 0)
 
         if rank > 0 and m * n > 10000:

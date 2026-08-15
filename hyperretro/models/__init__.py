@@ -367,6 +367,45 @@ def export_model(
     return _export_model(model, path, format=format, **kwargs)
 
 
+def stream_compress_gguf(
+    src_path: str | Path,
+    dst_path: str | Path,
+    *,
+    ffn_rank: int = 1024,
+    attn_rank: int = 0,
+    int4: bool = True,
+    int4_block_size: int = 128,
+    int4_awq: bool = False,
+    quiet: bool = False,
+) -> dict:
+    """Compress a GGUF in a single streaming pass (peak memory = one tensor).
+
+    Designed for models too large to materialize as a float32 state dict.
+    FFN/attention matrices are SVD-factored (optionally int4-quantized) and
+    written as fp16; all other tensors are byte-copied in their source
+    quantized type.
+
+    Args:
+        src_path: source GGUF (any llama.cpp compatible quantized file).
+        dst_path: output GGUF.
+        ffn_rank: SVD rank for FFN matrices (0 = skip factoring).
+        attn_rank: SVD rank for attention projections (0 = skip).
+        int4: quantize factors to block-wise int4 before reconstruction.
+        int4_block_size: int4 block size.
+        int4_awq: reserved for AWQ-aware calibration.
+        quiet: suppress progress output.
+
+    Returns:
+        dict with n_tensors, n_factored, n_copied, out_size_mb, elapsed_s.
+    """
+    from hyperretro.models._stream import stream_compress_gguf as _stream
+    return _stream(
+        src_path, dst_path,
+        ffn_rank=ffn_rank, attn_rank=attn_rank, int4=int4,
+        int4_block_size=int4_block_size, int4_awq=int4_awq, quiet=quiet,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Lazy backend registration
 # ---------------------------------------------------------------------------

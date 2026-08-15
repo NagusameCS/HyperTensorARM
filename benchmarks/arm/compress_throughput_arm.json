@@ -89,5 +89,43 @@
         null
       ]
     }
-  }
+  },
+  "configs_0.5b": [
+    {
+      "config": "int4-only (all 2D matrices, block 128)",
+      "ppl_ours": 10.98,
+      "ppl_llama": 10.66,
+      "note": "the pipeline previously documented as ffn_rank=256 was int4-only: GGUF key names did not match the HF factor patterns; fixed 2026-08-15"
+    },
+    {
+      "config": "ffn_rank=1024 + int4 (in-memory export)",
+      "ppl_ours": 14.89,
+      "ppl_llama": 14.2
+    },
+    {
+      "config": "ffn_rank=1024 + int4 (streaming export, non-FFN byte-copied)",
+      "ppl_ours": 11.66,
+      "ppl_llama": 11.09,
+      "size_mb": 861
+    },
+    {
+      "config": "ffn_rank=256 + int4",
+      "ppl_ours": 1975258.0,
+      "ppl_llama": 1849224.0,
+      "note": "rank too low; pipeline still consistent with oracle"
+    }
+  ],
+  "configs_1.5b": [
+    {
+      "config": "int4-only",
+      "ppl_ours": 6.94,
+      "ppl_llama": 6.73
+    },
+    {
+      "config": "ffn_rank=1024 + int4",
+      "ppl_ours": 3569.5,
+      "ppl_llama": 3300.2,
+      "note": "plain truncated SVD at rank 1024 is too aggressive for 8960-dim FFN (civilized GRC uses sink/attention-aware method); rank 2048 streaming run in progress"
+    }
+  ]
 }
