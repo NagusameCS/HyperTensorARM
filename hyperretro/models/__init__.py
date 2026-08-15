@@ -266,6 +266,7 @@ def compress_model(
     int4_block_size: int = 128,
     int4_awq: bool = True,
     activation_corpus: str | None = None,
+    sink_T: int = 0,
     **kwargs,
 ) -> "CompressedModel":
     """Compress a model using HyperRetro.
@@ -276,11 +277,13 @@ def compress_model(
     Args:
         model: any AbstractModel instance.
         ffn_rank: target SVD rank for FFN matrices.
-        attn_rank: GRC rank for attention (0 = skip).
+        attn_rank: GRC shared-basis rank for attention Q/K/V (0 = skip).
         int4: apply block-wise int4 quantization.
         int4_block_size: quantization block size.
         int4_awq: use AWQ-aware quantization.
         activation_corpus: path to calibration text for AWQ.
+        sink_T: number of attention-sink columns to restore verbatim
+            (sink-aware GRC; 0 = vanilla GRC).
         **kwargs: backend-specific options.
 
     Returns:
@@ -295,6 +298,7 @@ def compress_model(
         int4_block_size=int4_block_size,
         int4_awq=int4_awq,
         activation_corpus=activation_corpus,
+        sink_T=sink_T,
         **kwargs,
     )
 
@@ -376,23 +380,25 @@ def stream_compress_gguf(
     int4: bool = True,
     int4_block_size: int = 128,
     int4_awq: bool = False,
+    sink_T: int = 0,
     quiet: bool = False,
 ) -> dict:
     """Compress a GGUF in a single streaming pass (peak memory = one tensor).
 
     Designed for models too large to materialize as a float32 state dict.
-    FFN/attention matrices are SVD-factored (optionally int4-quantized) and
-    written as fp16; all other tensors are byte-copied in their source
-    quantized type.
+    FFN/attention matrices are compressed (SVD for FFN, GRC shared-basis for
+    attention Q/K/V, optionally int4-quantized) and written as fp16; all
+    other tensors are byte-copied in their source quantized type.
 
     Args:
         src_path: source GGUF (any llama.cpp compatible quantized file).
         dst_path: output GGUF.
         ffn_rank: SVD rank for FFN matrices (0 = skip factoring).
-        attn_rank: SVD rank for attention projections (0 = skip).
+        attn_rank: GRC shared-basis rank for attention (0 = skip).
         int4: quantize factors to block-wise int4 before reconstruction.
         int4_block_size: int4 block size.
         int4_awq: reserved for AWQ-aware calibration.
+        sink_T: attention-sink columns restored verbatim (0 = vanilla GRC).
         quiet: suppress progress output.
 
     Returns:
@@ -402,7 +408,8 @@ def stream_compress_gguf(
     return _stream(
         src_path, dst_path,
         ffn_rank=ffn_rank, attn_rank=attn_rank, int4=int4,
-        int4_block_size=int4_block_size, int4_awq=int4_awq, quiet=quiet,
+        int4_block_size=int4_block_size, int4_awq=int4_awq,
+        sink_T=sink_T, quiet=quiet,
     )
 
 

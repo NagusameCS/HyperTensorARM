@@ -5,7 +5,7 @@ its rules. The essentials:
 
 - Build the C runtime with `./build_host_arm.sh`, then run the C suite with
   `./build_tests_arm.sh` (expect 39/39).
-- Run Python tests with `.venv311/bin/python -m pytest tests/` (expect 109/109).
+- Run Python tests with `.venv311/bin/python -m pytest tests/` (expect 114/114).
 - The end-to-end CLI is `.venv311/bin/python scripts/e2e.py`
   (`compress`, `stream`, `verify`, `quantize`); installed as `hyperarm`.
 - Every change to kernels, the tokenizer, or GGUF export must be re-verified

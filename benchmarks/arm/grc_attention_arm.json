@@ -1,0 +1,18 @@
+{
+  "title": "GRC attention compression on ARM (ported from original HyperTensor)",
+  "date": "2026-08-15",
+  "method": "shared-basis Q/K/V projection + optional sink-aware restore, GGUF pipeline (in-memory and streaming)",
+  "eval": "WikiText-2 slice, 512 tokens, geodessical --ppl-eval and llama.cpp per-token NLL oracle",
+  "baselines_1_5b": {"original_q4_k_m": [5.99, 5.84], "int4_only": [6.94, 6.73]},
+  "baselines_0_5b": {"original_q4_k_m": [7.94, 7.58], "int4_only": [10.98, 10.66]},
+  "results": [
+    {"model": "qwen2.5-1.5b", "attn_rank": 1024, "sink_T": 0, "mode": "in-memory", "ppl_ours": 7.46, "ppl_llama": 7.20},
+    {"model": "qwen2.5-1.5b", "attn_rank": 1024, "sink_T": 4, "mode": "in-memory", "ppl_ours": 7.68, "ppl_llama": 7.45},
+    {"model": "qwen2.5-1.5b", "attn_rank": 1024, "sink_T": 0, "mode": "streaming", "ppl_ours": 6.40, "ppl_llama": 6.14, "out_mb": 1242.5, "compress_s": 52.1, "decode_tok_s": 31.2},
+    {"model": "qwen2.5-0.5b", "attn_rank": 600, "sink_T": 4, "mode": "streaming", "ppl_ours": 9.48, "ppl_llama": 9.01, "out_mb": 523.4},
+    {"model": "qwen2.5-0.5b", "attn_rank": 256, "sink_T": 0, "mode": "in-memory", "ppl_ours": 68.5},
+    {"model": "qwen2.5-0.5b", "attn_rank": 256, "sink_T": 4, "mode": "in-memory", "ppl_ours": 58.7},
+    {"model": "qwen2.5-0.5b", "attn_rank": 1024, "sink_T": 4, "mode": "in-memory", "ppl_ours": 10.96, "ppl_llama": 10.59, "note": "full-rank identity sanity check, equals int4-only"}
+  ],
+  "original_claim_reference": "original HyperTensor GRC k=1024 on 1.5B: PPL 14.58 vs 12.94 baseline (their eval set, no int4); ours on WikiText slice with int4: 6.40 vs 6.94 int4-only baseline"
+}

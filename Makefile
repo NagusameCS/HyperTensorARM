@@ -6,6 +6,8 @@ MODEL  ?= models/qwen2.5-0.5b-instruct-q4_k_m.gguf
 IN     ?= $(MODEL)
 OUT    ?= outputs/compressed.gguf
 RANK   ?= 1024
+ATTN   ?= 0
+SINK   ?= 0
 
 .PHONY: help build test pytest all infer ppl compress stream verify quantize clean
 
@@ -23,7 +25,7 @@ help:
 	@echo "  quantize  - llama-quantize OUT to OUT.q4km.gguf (Q4_K_M)"
 	@echo "  clean     - remove build directories"
 	@echo ""
-	@echo "Variables: PY, MODEL, IN, OUT, RANK"
+	@echo "Variables: PY, MODEL, IN, OUT, RANK, ATTN, SINK"
 
 build:
 	./build_host_arm.sh
@@ -43,10 +45,10 @@ ppl:
 	./build_host_arm/geodessical $(MODEL) --ppl-eval
 
 compress:
-	$(PY) scripts/e2e.py compress $(IN) $(OUT) --ffn-rank $(RANK) --int4
+	$(PY) scripts/e2e.py compress $(IN) $(OUT) --ffn-rank $(RANK) --attn-rank $(ATTN) --sink $(SINK) --int4
 
 stream:
-	$(PY) scripts/e2e.py stream $(IN) $(OUT) --ffn-rank $(RANK) --int4
+	$(PY) scripts/e2e.py stream $(IN) $(OUT) --ffn-rank $(RANK) --attn-rank $(ATTN) --sink $(SINK) --int4
 
 verify:
 	$(PY) scripts/e2e.py verify $(OUT)

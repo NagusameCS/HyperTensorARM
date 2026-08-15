@@ -25,7 +25,7 @@ Reference clones `civilized-HyperTensor/`, `HyperTensor-original/` and
 ```bash
 ./build_host_arm.sh                 # builds build_host_arm/geodessical
 ./build_tests_arm.sh                # builds libht_arm.a + C tests (39/39)
-.venv311/bin/python -m pytest tests/  # 109 tests, includes the emoji guard
+.venv311/bin/python -m pytest tests/  # 114 tests, includes the emoji guard
 
 # Inference + eval (verified models in models/)
 ./build_host_arm/geodessical models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
@@ -35,6 +35,7 @@ Reference clones `civilized-HyperTensor/`, `HyperTensor-original/` and
 # End-to-end compression (installed as `hyperarm`, or scripts/e2e.py)
 .venv311/bin/python scripts/e2e.py compress in.gguf out.gguf --ffn-rank 1024 --int4
 .venv311/bin/python scripts/e2e.py stream   in.gguf out.gguf --ffn-rank 1024 --int4
+.venv311/bin/python scripts/e2e.py stream   in.gguf out.gguf --ffn-rank 0 --attn-rank 1024 --sink 4 --int4  # GRC attention
 .venv311/bin/python scripts/e2e.py verify   out.gguf
 .venv311/bin/python scripts/e2e.py quantize out.gguf out-q4km.gguf Q4_K_M
 ```
@@ -68,6 +69,11 @@ PPL measured twice: `geodessical --ppl-eval` and a fresh llama.cpp build
 | int4-only | 10.98 | 10.66 |
 | ffn_rank=1024 + int4, streaming | 11.66 | 11.09 |
 | ffn_rank=256 + int4 | ~2M (rank too low) | ~1.8M |
+| attn_rank=600 (GRC) + int4, streaming, sink 4 | 9.48 | 9.01 |
+
+1.5B: original 5.99/5.84; int4-only 6.94/6.73; ffn_rank=1024 breaks; ffn_rank=2048
+streaming 7.73/7.35; **GRC attn_rank=1024+int4 streaming 6.40/6.14** (in-memory
+7.46/7.20 vanilla, 7.68/7.45 sink 4).
 
 Decode throughput: fp16 37.7 tok/s, Q8_0 108.7, Q4_K_M 109.2 (0.5B).
 
@@ -115,7 +121,7 @@ Decode throughput: fp16 37.7 tok/s, Q8_0 108.7, Q4_K_M 109.2 (0.5B).
 ## Definition of done for a change
 
 - [ ] C changes: 39/39 C tests pass.
-- [ ] Python changes: 109 pytest tests pass (incl. emoji guard).
+- [ ] Python changes: 114 pytest tests pass (incl. emoji guard).
 - [ ] Numeric changes: oracle parity shown (llama.cpp, and torch for exports).
 - [ ] Docs and `ARM_CLAIMS.md` updated with measured numbers only.
 - [ ] Committed with a message stating what changed and the evidence.

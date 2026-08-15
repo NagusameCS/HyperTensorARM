@@ -26,7 +26,7 @@ matrix.
 | CECI grafting (ht-graft) | OK 5 grafts built, "GRAFTING WORKS" |
 | External verification on real 1.5B model (claim: 14/14) | OK **14/14 PASS** (UGT overlap 0.970 vs 0.968 claim) |
 | HyperRetro GRC compression (rank 1024, all 28 layers) | OK Compressed HF checkpoint loads + runs: PPL 14.58 vs 12.94 baseline |
-| E2E: GGUF → compress (FFN SVD + int4) → GGUF → ARM runtime | OK **Verified vs oracle**: exports run on geodessical AND llama.cpp; tokenizer bit-identical to llama.cpp. 0.5B (PPL ours / llama.cpp): int4-only 10.98 / 10.66; ffn_rank=1024+int4 14.89 / 14.20 (in-memory) and 11.66 / 11.09 (streaming, 861 MB, 46.4 tok/s). 1.5B: int4-only 6.94 / 6.73; ffn_rank=2048+int4 streaming 7.73 / 7.35 (2729 MB, 15.9 tok/s). Decode: fp16 37.7 tok/s → Q8_0 108.7 / Q4_K_M 109.2 tok/s |
+| E2E: GGUF → compress (FFN SVD / GRC attention + int4) → GGUF → ARM runtime | OK **Verified vs oracle**: exports run on geodessical AND llama.cpp; tokenizer bit-identical to llama.cpp. 0.5B (PPL ours / llama.cpp): int4-only 10.98 / 10.66; ffn_rank=1024+int4 14.89 / 14.20 (in-memory) and 11.66 / 11.09 (streaming, 861 MB, 46.4 tok/s). 1.5B: int4-only 6.94 / 6.73; ffn_rank=2048+int4 streaming 7.73 / 7.35 (2729 MB, 15.9 tok/s). GRC attention (original method, ported): 1.5B attn_rank=1024+int4 streaming 6.40 / 6.14 (1242.5 MB, 31.2 tok/s); 0.5B attn_rank=600+sink 4 streaming 9.48 / 9.01. Decode: fp16 37.7 tok/s → Q8_0 108.7 / Q4_K_M 109.2 tok/s |
 | civilized-HyperTensor models module | OK Imported, fixed for ARM, tests pass |
 | Unified memory: Qwen2.5-1.5B Q4_K_M (1.07 GB) | OK 32.8 tok/s decode, PPL 16.68, oracle parity |
 | i8mm (SMMLA) + GCD parallel hyperretro kernel | OK 12.78× vs two Q8 GEMVs (claim 2.3×) |

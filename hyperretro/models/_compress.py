@@ -12,6 +12,8 @@ the model architecture:
 from __future__ import annotations
 
 from pathlib import Path
+import re
+
 import numpy as np
 
 from hyperretro.models import AbstractModel, CompressedModel
@@ -26,6 +28,7 @@ def _compress_abstract_model(
     int4_block_size: int = 128,
     int4_awq: bool = True,
     activation_corpus: str | None = None,
+    sink_T: int = 0,
     **kwargs,
 ) -> CompressedModel:
     """Compress any AbstractModel with HyperRetro.
@@ -45,10 +48,10 @@ def _compress_abstract_model(
             activation_corpus, **kwargs,
         )
     else:
-        # Generic path: apply basic SVD + int4 to all 2D weight matrices
+        # Generic path: GRC attention compression + SVD/int4 for FFN
         return _compress_generic(
             model, ffn_rank, attn_rank, int4, int4_block_size, int4_awq,
-            **kwargs,
+            sink_T=sink_T, **kwargs,
         )
 
 
@@ -276,6 +279,87 @@ def _compress_om(
 # Generic compression (any model)
 # ---------------------------------------------------------------------------
 
+_GGUF_ATTN_RE = re.compile(r"^blk\.(\d+)\.attn_(q|k|v)\.weight$")
+
+
+def _grc_compress_layer(Wq: np.ndarray, Wk: np.ndarray, Wv: np.ndarray,
+                        k: int, sink_T: int):
+    """GRC shared-basis attention compression for one layer.
+
+    Builds a basis P from the sum Gram matrix of Q/K/V, projects all three
+    onto the top-k shared subspace, and (with sink_T > 0) restores the
+    top-T magnitude columns verbatim. Returns (Wq', Wk', Wv').
+    """
+    from hyperretro.hf.compress import build_shared_basis, project, sink_indices
+
+    sink = sink_indices(Wq, Wk, Wv, sink_T)
+    if sink_T > 0 and len(sink) > 0:
+        WqR = Wq.copy(); WqR[:, sink] = 0.0
+        WkR = Wk.copy(); WkR[:, sink] = 0.0
+        WvR = Wv.copy(); WvR[:, sink] = 0.0
+        P = build_shared_basis(WqR, WkR, WvR)
+        Wqn = project(WqR, P, k); Wqn[:, sink] = Wq[:, sink]
+        Wkn = project(WkR, P, k); Wkn[:, sink] = Wk[:, sink]
+        Wvn = project(WvR, P, k); Wvn[:, sink] = Wv[:, sink]
+    else:
+        P = build_shared_basis(Wq, Wk, Wv)
+        Wqn = project(Wq, P, k)
+        Wkn = project(Wk, P, k)
+        Wvn = project(Wv, P, k)
+    return Wqn, Wkn, Wvn
+
+
+def _group_gguf_attn(state_dict) -> dict[int, dict[str, str]]:
+    """Group GGUF attention names blk.N.attn_{q,k,v}.weight by layer."""
+    layers: dict[int, dict[str, str]] = {}
+    for name in state_dict.keys():
+        mm = _GGUF_ATTN_RE.match(name)
+        if mm:
+            layers.setdefault(int(mm.group(1)), {})[mm.group(2)] = name
+    return layers
+
+
+def _grc_attention(state_dict, attn_rank: int, sink_T: int) -> dict[str, np.ndarray]:
+    """Apply GRC shared-basis compression to Q/K/V per layer.
+
+    Supports GGUF names (blk.N.attn_q/k/v.weight) and HF names
+    (q_proj/k_proj/v_proj). Returns {original_key: projected dense np}.
+    Layers missing any of Q/K/V are skipped.
+    """
+    out: dict[str, np.ndarray] = {}
+
+    gguf_layers = _group_gguf_attn(state_dict)
+    if gguf_layers:
+        for li, names in sorted(gguf_layers.items()):
+            if not all(s in names for s in ("q", "k", "v")):
+                continue
+            Wq = state_dict[names["q"]].float().cpu().numpy()
+            Wk = state_dict[names["k"]].float().cpu().numpy()
+            Wv = state_dict[names["v"]].float().cpu().numpy()
+            k = min(attn_rank, Wq.shape[1])
+            Wqn, Wkn, Wvn = _grc_compress_layer(Wq, Wk, Wv, k, sink_T)
+            out[names["q"]] = Wqn
+            out[names["k"]] = Wkn
+            out[names["v"]] = Wvn
+        return out
+
+    from hyperretro.hf.compress import _group_attn_by_layer
+    layers = _group_attn_by_layer(state_dict)
+    for li in sorted(layers.keys()):
+        names = layers[li]
+        if "qkv" in names or not all(s in names for s in ("q", "k", "v")):
+            continue
+        Wq = state_dict[names["q"]].float().cpu().numpy()
+        Wk = state_dict[names["k"]].float().cpu().numpy()
+        Wv = state_dict[names["v"]].float().cpu().numpy()
+        k = min(attn_rank, Wq.shape[1])
+        Wqn, Wkn, Wvn = _grc_compress_layer(Wq, Wk, Wv, k, sink_T)
+        out[names["q"]] = Wqn
+        out[names["k"]] = Wkn
+        out[names["v"]] = Wvn
+    return out
+
+
 def _compress_generic(
     model: AbstractModel,
     ffn_rank: int,
@@ -283,39 +367,57 @@ def _compress_generic(
     int4: bool,
     block_size: int,
     awq: bool,
+    sink_T: int = 0,
     **kwargs,
 ) -> CompressedModel:
-    """Generic compression: SVD-factor all 2D weight matrices + int4."""
+    """Generic compression: GRC attention + SVD FFN + int4."""
     import torch
     from hyperretro.hf.factored import _svd_factor
     from hyperretro.hf.factor_quantize import quantize_blockwise_int4
     from hyperretro.hf.factor_int4 import pack_int4_rows
 
+    src = {k: v for k, v in model.state_dict.items()}
     sd = {}
     manifest = {"backend": model.backend, "ffn": [], "layers": []}
 
-    for key, tensor in model.state_dict.items():
+    # GRC shared-basis attention compression (Q/K/V jointly, per layer).
+    grc = _grc_attention(src, attn_rank, sink_T) if attn_rank > 0 else {}
+
+    for key, tensor in src.items():
         if not (hasattr(tensor, "dim") and tensor.dim() == 2):
             sd[key] = tensor
             continue
 
         m, n = tuple(tensor.shape)
-        W = tensor.float().cpu().numpy()
 
-        # Determine rank. Handles HF names (q_proj/gate_proj) and GGUF names
-        # (blk.N.ffn_gate.weight / blk.N.attn_q.weight). Norms, embeddings
-        # and heads are excluded by the explicit patterns.
         is_ffn = any(pat in key for pat in [
             ".ffn_gate.", ".ffn_up.", ".ffn_down.", ".ffn.", ".mlp.", ".experts.",
             "gate_proj.", "up_proj.", "down_proj.",
         ])
-        is_attn = any(pat in key for pat in [
-            ".attn_q.", ".attn_k.", ".attn_v.", ".attn_output.",
-            "q_proj.", "k_proj.", "v_proj.", "o_proj.",
-        ])
-        rank = ffn_rank if is_ffn else (attn_rank if is_attn else 0)
+
+        if key in grc:
+            # GRC-projected attention tensor: optional int4, no SVD.
+            W = grc[key]
+            if int4 and m * n > 10000:
+                W_q, W_s = quantize_blockwise_int4(W, block_size=block_size)
+                base = key[:-len(".weight")] if key.endswith(".weight") else key
+                sd[f"{base}.q"] = torch.from_numpy(pack_int4_rows(W_q)).to(torch.uint8)
+                sd[f"{base}.scales"] = torch.from_numpy(W_s).to(torch.float16)
+            else:
+                sd[key] = torch.from_numpy(W).to(torch.float16)
+            manifest["layers"].append({
+                "weight_key": key, "rank": min(attn_rank, n), "grc": True,
+                "in_features": n, "out_features": m,
+            })
+            continue
+
+        # GRC shared-basis compression only touches Q/K/V; o_proj and the
+        # rest of attention stay on the plain int4 path (no per-tensor SVD,
+        # which the oracle runs showed hurts more than it helps).
+        rank = ffn_rank if is_ffn else 0
 
         if rank > 0 and m * n > 10000:
+            W = tensor.float().cpu().numpy()
             k = min(rank, m, n)
             A, B = _svd_factor(W, k)
             k_eff = A.shape[0]
@@ -341,6 +443,7 @@ def _compress_generic(
             })
         elif int4 and m * n > 10000:
             # Int4-quantize without factoring
+            W = tensor.float().cpu().numpy()
             W_q, W_s = quantize_blockwise_int4(W, block_size=block_size)
             base = key[:-len(".weight")] if key.endswith(".weight") else key
             sd[f"{base}.q"] = torch.from_numpy(pack_int4_rows(W_q)).to(torch.uint8)

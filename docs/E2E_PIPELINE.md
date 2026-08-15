@@ -14,8 +14,12 @@ llama.cpp GGUF (any quantized type)
 HyperRetro compression
   - FFN matrices (blk.N.ffn_gate/up/down.weight): truncated SVD to rank k,
     factors optionally block-quantized to int4, reconstructed as fp16
-  - attention matrices (blk.N.attn_q/k/v/output.weight): optional SVD
-    (attn_rank > 0)
+  - attention Q/K/V (blk.N.attn_q/k/v.weight): GRC shared-basis compression
+    (attn_rank > 0) — the original HyperTensor method: build a shared basis
+    from the sum Gram matrix of Q/K/V, project all three onto the top-k
+    subspace, optionally restore the top-T magnitude columns verbatim
+    (sink-aware, --sink T). o_proj is never SVD-factored (oracle runs show
+    it hurts; it stays int4 / byte-copied).
   - everything else: unchanged (or byte-copied, streaming mode)
         |
         |  export / stream-write
@@ -80,18 +84,42 @@ Decode throughput (geodessical, 0.5B compressed model):
 
 1.5B: int4-only PPL 6.94 (llama 6.73). ffn_rank=2048 + int4 streaming gives
 PPL 7.73 (llama 7.35), 2729 MB, 15.9 tok/s decode. Plain truncated SVD at rank
-1024 is too aggressive for the 8960-dim FFN (PPL ~3.5K); the civilized GRC
-method (sink-aware) is required at lower ranks.
+1024 is too aggressive for the 8960-dim FFN (PPL ~3.5K); the GRC method
+(shared basis, sink-aware) is required at lower ranks — see below.
+
+## GRC attention compression (ported from the original, verified)
+
+Q/K/V are compressed jointly per layer with a shared basis (rank k) instead
+of per-tensor SVD. In-memory exports int4-quantize every 2D matrix; streaming
+exports byte-copy everything except the GRC-compressed tensors.
+
+| Config | geodessical PPL | llama.cpp PPL | Note |
+|---|---|---|---|
+| 1.5B attn_rank=1024 + int4, in-memory | 7.46 | 7.20 | vanilla GRC, sink_T=0 |
+| 1.5B attn_rank=1024 + int4, in-memory | 7.68 | 7.45 | sink-aware GRC, sink_T=4 |
+| 1.5B attn_rank=1024 + int4, streaming | 6.40 | 6.14 | 1242.5 MB, 52 s compress |
+| 0.5B attn_rank=600 + int4, streaming | 9.48 | 9.01 | sink_T=4, 523.4 MB |
+| 0.5B attn_rank=256 + int4, in-memory | 68.5 / 58.7 | — | sink_T=0 / sink_T=4 (rank too low for this model) |
+| 0.5B attn_rank=1024 + int4 (full rank) | 10.96 | 10.59 | identity sanity check = int4-only |
+
+1.5B baselines for reference: original 5.99 (llama 5.84), int4-only 6.94
+(llama 6.73). GRC at k=1024 (2/3 of d=1536) costs only +0.4 PPL vs int4-only
+in streaming mode — the original's claim-level method (their numbers: GRC
+k=1024 PPL 14.58 vs 12.94 baseline on their own eval set, no int4). Sink-aware
+helps at very low ranks (0.5B k=256: 68.5 -> 58.7); at k=1024 on 1.5B vanilla
+is marginally better. Report per-config.
 
 ## Reproducing
 
 ```bash
 ./build_host_arm.sh                     # C runtime
 ./build_tests_arm.sh                    # C test suite
-.venv311/bin/python -m pytest tests/    # 109 tests incl. emoji-free guard
+.venv311/bin/python -m pytest tests/    # 114 tests incl. emoji-free guard
 
 .venv311/bin/python scripts/e2e.py compress \
     models/qwen2.5-0.5b-instruct-q4_k_m.gguf out.gguf --ffn-rank 1024 --int4
+.venv311/bin/python scripts/e2e.py stream \
+    in.gguf out.gguf --ffn-rank 0 --attn-rank 1024 --sink 4 --int4
 .venv311/bin/python scripts/e2e.py verify out.gguf
 .venv311/bin/python scripts/e2e.py quantize out.gguf out-q4km.gguf Q4_K_M
 ```

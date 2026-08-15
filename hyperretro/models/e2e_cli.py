@@ -28,6 +28,8 @@ def _add_compress_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--int4-awq", action="store_true",
                    help="AWQ-aware quantization (needs calibration corpus)")
     p.add_argument("--activation-corpus", default=None)
+    p.add_argument("--sink", type=int, default=0,
+                   help="attention-sink columns restored verbatim in GRC (0 = vanilla)")
 
 
 def cmd_compress(args: argparse.Namespace) -> int:
@@ -35,7 +37,8 @@ def cmd_compress(args: argparse.Namespace) -> int:
 
     print(f"[e2e] loading {args.input}")
     model = load_model(args.input)
-    print(f"[e2e] compressing ffn_rank={args.ffn_rank} int4={args.int4}")
+    print(f"[e2e] compressing ffn_rank={args.ffn_rank} attn_rank={args.attn_rank} "
+          f"sink={args.sink} int4={args.int4}")
     cm = compress_model(
         model,
         ffn_rank=args.ffn_rank,
@@ -44,6 +47,7 @@ def cmd_compress(args: argparse.Namespace) -> int:
         int4_block_size=args.int4_block_size,
         int4_awq=args.int4_awq,
         activation_corpus=args.activation_corpus,
+        sink_T=args.sink,
     )
     print(f"[e2e] manifest: {cm.manifest.get('ffn', '?')} factored")
     export_model(cm, args.output, format="gguf")
@@ -61,6 +65,7 @@ def cmd_stream(args: argparse.Namespace) -> int:
         int4=args.int4,
         int4_block_size=args.int4_block_size,
         int4_awq=args.int4_awq,
+        sink_T=args.sink,
     )
     print(f"[e2e] wrote {args.output}: {stats}")
     return 0
